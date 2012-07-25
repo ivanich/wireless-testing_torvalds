@@ -106,7 +106,7 @@ static void rtl_op_stop(struct ieee80211_hw *hw)
 
 	if (unlikely(ppsc->rfpwr_state == ERFOFF)) {
 		rtl_ips_nic_on(hw);
-		mdelay(1);
+		rtl_mdelay(1);
 	}
 
 	mutex_lock(&rtlpriv->locks.conf_mutex);
@@ -153,8 +153,6 @@ static int rtl_op_add_interface(struct ieee80211_hw *hw,
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
 	struct rtl_mac *mac = rtl_mac(rtl_priv(hw));
 	int err = 0;
-
-	vif->driver_flags |= IEEE80211_VIF_BEACON_FILTER;
 
 	if (mac->vif) {
 		RT_TRACE(rtlpriv, COMP_ERR, DBG_WARNING,
@@ -321,6 +319,13 @@ static int rtl_op_config(struct ieee80211_hw *hw, u32 changed)
 		struct ieee80211_channel *channel = hw->conf.channel;
 		u8 wide_chan = (u8) channel->hw_value;
 
+		if (rtlpriv->dm.supp_phymode_switch &&
+		    mac->link_state < MAC80211_LINKED &&
+		    !mac->act_scanning) {
+			if (rtlpriv->cfg->ops->check_switch_to_dmdp)
+				rtlpriv->cfg->ops->check_switch_to_dmdp(hw);
+		}
+
 		/*
 		 *because we should back channel to
 		 *current_network.chan in in scanning,
@@ -381,7 +386,7 @@ static int rtl_op_config(struct ieee80211_hw *hw, u32 changed)
 		 */
 		if (rtlpriv->mac80211.offchan_delay) {
 			rtlpriv->mac80211.offchan_delay = false;
-			mdelay(50);
+			rtl_mdelay(50);
 		}
 		rtlphy->current_channel = wide_chan;
 
@@ -483,21 +488,26 @@ static int rtl_op_sta_add(struct ieee80211_hw *hw,
 
 	if (sta) {
 		sta_entry = (struct rtl_sta_info *) sta->drv_priv;
+		spin_lock_bh(&rtlpriv->locks.entry_list_lock);
+		list_add_tail(&sta_entry->list, &rtlpriv->entry_list);
+		spin_unlock_bh(&rtlpriv->locks.entry_list_lock);
 		if (rtlhal->current_bandtype == BAND_ON_2_4G) {
 			sta_entry->wireless_mode = WIRELESS_MODE_G;
 			if (sta->supp_rates[0] <= 0xf)
 				sta_entry->wireless_mode = WIRELESS_MODE_B;
 			if (sta->ht_cap.ht_supported)
 				sta_entry->wireless_mode = WIRELESS_MODE_N_24G;
+
+			if (rtlpriv->mac80211.opmode == NL80211_IFTYPE_ADHOC)
+				sta_entry->wireless_mode = WIRELESS_MODE_G;
 		} else if (rtlhal->current_bandtype == BAND_ON_5G) {
 			sta_entry->wireless_mode = WIRELESS_MODE_A;
 			if (sta->ht_cap.ht_supported)
 				sta_entry->wireless_mode = WIRELESS_MODE_N_24G;
-		}
 
-		/* I found some times mac80211 give wrong supp_rates for adhoc*/
-		if (rtlpriv->mac80211.opmode == NL80211_IFTYPE_ADHOC)
-			sta_entry->wireless_mode = WIRELESS_MODE_G;
+			if (rtlpriv->mac80211.opmode == NL80211_IFTYPE_ADHOC)
+				sta_entry->wireless_mode = WIRELESS_MODE_A;
+		}
 
 		RT_TRACE(rtlpriv, COMP_MAC80211, DBG_DMESG,
 			 "Add sta addr is %pM\n", sta->addr);
@@ -517,6 +527,9 @@ static int rtl_op_sta_remove(struct ieee80211_hw *hw,
 		sta_entry = (struct rtl_sta_info *) sta->drv_priv;
 		sta_entry->wireless_mode = 0;
 		sta_entry->ratr_index = 0;
+		spin_lock_bh(&rtlpriv->locks.entry_list_lock);
+		list_del(&sta_entry->list);
+		spin_unlock_bh(&rtlpriv->locks.entry_list_lock);
 	}
 	return 0;
 }
@@ -645,9 +658,20 @@ static void rtl_op_bss_info_changed(struct ieee80211_hw *hw,
 
 			if (rtlpriv->cfg->ops->linked_set_reg)
 				rtlpriv->cfg->ops->linked_set_reg(hw);
+
+			rcu_read_lock();
+			sta = ieee80211_find_sta(vif, (u8 *)bss_conf->bssid);
 			if (mac->opmode == NL80211_IFTYPE_STATION && sta)
 				rtlpriv->cfg->ops->update_rate_tbl(hw, sta, 0);
-			RT_TRACE(rtlpriv, COMP_MAC80211, DBG_DMESG,
+			RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_LOUD,
+				 "send PS STATIC frame \n");
+			if (rtlpriv->dm.supp_phymode_switch) {
+				if (sta->ht_cap.ht_supported)
+					rtl_send_smps_action(hw, sta,
+						IEEE80211_SMPS_STATIC);
+			}
+			rcu_read_unlock();
+				RT_TRACE(rtlpriv, COMP_MAC80211, DBG_DMESG,
 				 "BSS_CHANGED_ASSOC\n");
 		} else {
 			if (mac->link_state == MAC80211_LINKED)
@@ -655,13 +679,12 @@ static void rtl_op_bss_info_changed(struct ieee80211_hw *hw,
 
 			mac->link_state = MAC80211_NOLINK;
 			memset(mac->bssid, 0, 6);
-
-			/* reset sec info */
-			rtl_cam_reset_sec_info(hw);
-
-			rtl_cam_reset_all_entry(hw);
 			mac->vendor = PEER_UNKNOWN;
 
+			if (rtlpriv->dm.supp_phymode_switch) {
+				if (rtlpriv->cfg->ops->check_switch_to_dmdp)
+					rtlpriv->cfg->ops->check_switch_to_dmdp(hw);
+			}
 			RT_TRACE(rtlpriv, COMP_MAC80211, DBG_DMESG,
 				 "BSS_CHANGED_UN_ASSOC\n");
 		}
@@ -876,12 +899,10 @@ static int rtl_op_ampdu_action(struct ieee80211_hw *hw,
 		RT_TRACE(rtlpriv, COMP_MAC80211, DBG_TRACE,
 			 "IEEE80211_AMPDU_TX_START: TID:%d\n", tid);
 		return rtl_tx_agg_start(hw, sta, tid, ssn);
-		break;
 	case IEEE80211_AMPDU_TX_STOP:
 		RT_TRACE(rtlpriv, COMP_MAC80211, DBG_TRACE,
 			 "IEEE80211_AMPDU_TX_STOP: TID:%d\n", tid);
 		return rtl_tx_agg_stop(hw, sta, tid);
-		break;
 	case IEEE80211_AMPDU_TX_OPERATIONAL:
 		RT_TRACE(rtlpriv, COMP_MAC80211, DBG_TRACE,
 			 "IEEE80211_AMPDU_TX_OPERATIONAL:TID:%d\n", tid);
@@ -890,11 +911,11 @@ static int rtl_op_ampdu_action(struct ieee80211_hw *hw,
 	case IEEE80211_AMPDU_RX_START:
 		RT_TRACE(rtlpriv, COMP_MAC80211, DBG_TRACE,
 			 "IEEE80211_AMPDU_RX_START:TID:%d\n", tid);
-		break;
+		return rtl_rx_agg_start(hw, sta, tid);
 	case IEEE80211_AMPDU_RX_STOP:
 		RT_TRACE(rtlpriv, COMP_MAC80211, DBG_TRACE,
 			 "IEEE80211_AMPDU_RX_STOP:TID:%d\n", tid);
-		break;
+		return rtl_rx_agg_stop(hw, sta, tid);
 	default:
 		RT_TRACE(rtlpriv, COMP_ERR, DBG_EMERG,
 			 "IEEE80211_AMPDU_ERR!!!!:\n");
@@ -908,6 +929,10 @@ static void rtl_op_sw_scan_start(struct ieee80211_hw *hw)
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
 	struct rtl_mac *mac = rtl_mac(rtl_priv(hw));
 
+	if (rtlpriv->dm.supp_phymode_switch) {
+		if (rtlpriv->cfg->ops->check_switch_to_dmdp)
+			rtlpriv->cfg->ops->check_switch_to_dmdp(hw);
+	}
 	mac->act_scanning = true;
 
 	RT_TRACE(rtlpriv, COMP_MAC80211, DBG_LOUD, "\n");
@@ -967,6 +992,10 @@ static int rtl_op_set_key(struct ieee80211_hw *hw, enum set_key_cmd cmd,
 			 "not open hw encryption\n");
 		return -ENOSPC;	/*User disabled HW-crypto */
 	}
+	/* To support IBSS, use sw-crypto for GTK */
+	if (vif->type == NL80211_IFTYPE_ADHOC &&
+	   !(key->flags & IEEE80211_KEY_FLAG_PAIRWISE))
+		return -ENOSPC;
 	RT_TRACE(rtlpriv, COMP_SEC, DBG_DMESG,
 		 "%s hardware based encryption for keyidx: %d, mac: %pM\n",
 		 cmd == SET_KEY ? "Using" : "Disabling", key->keyidx,
@@ -993,6 +1022,15 @@ static int rtl_op_set_key(struct ieee80211_hw *hw, enum set_key_cmd cmd,
 		key_type = AESCCMP_ENCRYPTION;
 		RT_TRACE(rtlpriv, COMP_SEC, DBG_DMESG, "alg:CCMP\n");
 		break;
+	case WLAN_CIPHER_SUITE_AES_CMAC:
+		/*HW don't support CMAC encryption, use software CMAC encryption */
+		key_type = AESCMAC_ENCRYPTION;
+		RT_TRACE(rtlpriv, COMP_SEC, DBG_DMESG, "alg:CMAC\n");
+		RT_TRACE(rtlpriv, COMP_SEC, DBG_DMESG,
+			 "HW don't support CMAC encrypiton, "
+			 "use software CMAC encrypiton\n");
+		err = -EOPNOTSUPP;
+		goto out_unlock;
 	default:
 		RT_TRACE(rtlpriv, COMP_ERR, DBG_EMERG, "alg_err:%x!!!!\n",
 			 key->cipher);
@@ -1095,6 +1133,9 @@ static int rtl_op_set_key(struct ieee80211_hw *hw, enum set_key_cmd cmd,
 		key->hw_key_idx = key_idx;
 		if (key_type == TKIP_ENCRYPTION)
 			key->flags |= IEEE80211_KEY_FLAG_GENERATE_MMIC;
+		/*use software CCMP encryption for management frames (MFP) */
+		if (key_type == AESCCMP_ENCRYPTION)
+			key->flags |= IEEE80211_KEY_FLAG_SW_MGMT;
 		break;
 	case DISABLE_KEY:
 		RT_TRACE(rtlpriv, COMP_SEC, DBG_DMESG,
@@ -1113,9 +1154,6 @@ static int rtl_op_set_key(struct ieee80211_hw *hw, enum set_key_cmd cmd,
 		 *or clear all entry here.
 		 */
 		rtl_cam_delete_one_entry(hw, mac_addr, key_idx);
-
-		rtl_cam_reset_sec_info(hw);
-
 		break;
 	default:
 		RT_TRACE(rtlpriv, COMP_ERR, DBG_EMERG,

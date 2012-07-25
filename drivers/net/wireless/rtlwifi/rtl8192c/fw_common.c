@@ -240,7 +240,7 @@ static int _rtl92c_fw_free_to_go(struct ieee80211_hw *hw)
 			return 0;
 		}
 
-		mdelay(FW_8192C_POLLING_DELAY);
+		rtl_mdelay(FW_8192C_POLLING_DELAY);
 
 	} while (counter++ < FW_8192C_POLLING_TIMEOUT_COUNT);
 

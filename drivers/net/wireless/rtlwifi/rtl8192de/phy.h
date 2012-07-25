@@ -49,7 +49,6 @@
 #define	PATH_NUM				2
 
 #define LOOP_LIMIT				5
-#define MAX_STALL_TIME				50
 #define ANTENNA_DIVERSITY_VALUE			0x80
 #define MAX_TXPWR_IDX_NMODE_92S			63
 #define RESET_CNT_LIMIT				3
@@ -174,5 +173,7 @@ void rtl92d_acquire_cckandrw_pagea_ctl(struct ieee80211_hw *hw,
 u8 rtl92d_get_rightchnlplace_for_iqk(u8 chnl);
 void rtl92d_phy_reload_iqk_setting(struct ieee80211_hw *hw, u8 channel);
 void rtl92d_phy_iq_calibrate(struct ieee80211_hw *hw);
+void rtl92d_easy_concurrent_switch_to_dmdp(struct ieee80211_hw *hw);
+void rtl_dualmac_easyconcurrent(struct ieee80211_hw *hw);
 
 #endif

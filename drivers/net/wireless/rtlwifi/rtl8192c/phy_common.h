@@ -49,7 +49,6 @@
 #define	PATH_NUM			2
 
 #define LOOP_LIMIT			5
-#define MAX_STALL_TIME			50
 #define AntennaDiversityValue		0x80
 #define MAX_TXPWR_IDX_NMODE_92S		63
 #define Reset_Cnt_Limit			3

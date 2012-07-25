@@ -122,14 +122,14 @@ static u32 _rtl92s_phy_rf_serial_read(struct ieee80211_hw *hw,
 	rtl_set_bbreg(hw, RFPGA0_XA_HSSIPARAMETER2, MASKDWORD,
 		      tmplong & (~BLSSI_READEDGE));
 
-	mdelay(1);
+	rtl_mdelay(1);
 
 	rtl_set_bbreg(hw, pphyreg->rfhssi_para2, MASKDWORD, tmplong2);
-	mdelay(1);
+	rtl_mdelay(1);
 
 	rtl_set_bbreg(hw, RFPGA0_XA_HSSIPARAMETER2, MASKDWORD, tmplong |
 		      BLSSI_READEDGE);
-	mdelay(1);
+	rtl_mdelay(1);
 
 	if (rfpath == RF90_PATH_A)
 		rfpi_enable = (u8)rtl_get_bbreg(hw, RFPGA0_XA_HSSIPARAMETER1,
@@ -485,7 +485,7 @@ u8 rtl92s_phy_sw_chnl(struct ieee80211_hw *hw)
 				 &rtlphy->sw_chnl_step, &delay);
 		if (!ret) {
 			if (delay > 0)
-				mdelay(delay);
+				rtl_mdelay(delay);
 			else
 				continue;
 		} else {
@@ -852,11 +852,11 @@ static bool _rtl92s_phy_config_bb(struct ieee80211_hw *hw, u8 configtype)
 	if (configtype == BASEBAND_CONFIG_PHY_REG) {
 		for (i = 0; i < phy_reg_len; i = i + 2) {
 			if (phy_reg_table[i] == 0xfe)
-				mdelay(50);
+				rtl_mdelay(50);
 			else if (phy_reg_table[i] == 0xfd)
-				mdelay(5);
+				rtl_mdelay(5);
 			else if (phy_reg_table[i] == 0xfc)
-				mdelay(1);
+				rtl_mdelay(1);
 			else if (phy_reg_table[i] == 0xfb)
 				udelay(50);
 			else if (phy_reg_table[i] == 0xfa)
@@ -905,11 +905,11 @@ static bool _rtl92s_phy_set_bb_to_diff_rf(struct ieee80211_hw *hw,
 	if (configtype == BASEBAND_CONFIG_PHY_REG) {
 		for (i = 0; i < phy_regarray2xtxr_len; i = i + 3) {
 			if (phy_regarray2xtxr_table[i] == 0xfe)
-				mdelay(50);
+				rtl_mdelay(50);
 			else if (phy_regarray2xtxr_table[i] == 0xfd)
-				mdelay(5);
+				rtl_mdelay(5);
 			else if (phy_regarray2xtxr_table[i] == 0xfc)
-				mdelay(1);
+				rtl_mdelay(1);
 			else if (phy_regarray2xtxr_table[i] == 0xfb)
 				udelay(50);
 			else if (phy_regarray2xtxr_table[i] == 0xfa)
@@ -939,11 +939,11 @@ static bool _rtl92s_phy_config_bb_with_pg(struct ieee80211_hw *hw,
 	if (configtype == BASEBAND_CONFIG_PHY_REG) {
 		for (i = 0; i < phy_pg_len; i = i + 3) {
 			if (phy_table_pg[i] == 0xfe)
-				mdelay(50);
+				rtl_mdelay(50);
 			else if (phy_table_pg[i] == 0xfd)
-				mdelay(5);
+				rtl_mdelay(5);
 			else if (phy_table_pg[i] == 0xfc)
-				mdelay(1);
+				rtl_mdelay(1);
 			else if (phy_table_pg[i] == 0xfb)
 				udelay(50);
 			else if (phy_table_pg[i] == 0xfa)
@@ -1055,11 +1055,11 @@ u8 rtl92s_phy_config_rf(struct ieee80211_hw *hw, enum radio_path rfpath)
 			if (radio_a_table[i] == 0xfe)
 				/* Delay specific ms. Only RF configuration
 				 * requires delay. */
-				mdelay(50);
+				rtl_mdelay(50);
 			else if (radio_a_table[i] == 0xfd)
-				mdelay(5);
+				rtl_mdelay(5);
 			else if (radio_a_table[i] == 0xfc)
-				mdelay(1);
+				rtl_mdelay(1);
 			else if (radio_a_table[i] == 0xfb)
 				udelay(50);
 			else if (radio_a_table[i] == 0xfa)
@@ -1084,11 +1084,11 @@ u8 rtl92s_phy_config_rf(struct ieee80211_hw *hw, enum radio_path rfpath)
 			if (radio_b_table[i] == 0xfe)
 				/* Delay specific ms. Only RF configuration
 				 * requires delay.*/
-				mdelay(50);
+				rtl_mdelay(50);
 			else if (radio_b_table[i] == 0xfd)
-				mdelay(5);
+				rtl_mdelay(5);
 			else if (radio_b_table[i] == 0xfc)
-				mdelay(1);
+				rtl_mdelay(1);
 			else if (radio_b_table[i] == 0xfb)
 				udelay(50);
 			else if (radio_b_table[i] == 0xfa)
@@ -1153,7 +1153,7 @@ bool rtl92s_phy_bb_config(struct ieee80211_hw *hw)
 	/* Check BB/RF confiuration setting. */
 	/* We only need to configure RF which is turned on. */
 	path1 = (u8)(rtl92s_phy_query_bb_reg(hw, RFPGA0_TXINFO, 0xf));
-	mdelay(10);
+	rtl_mdelay(10);
 	path2 = (u8)(rtl92s_phy_query_bb_reg(hw, ROFDM0_TRXPATHENABLE, 0xf));
 	pathmap = path1 | path2;
 
