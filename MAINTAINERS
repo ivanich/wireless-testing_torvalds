@@ -2750,6 +2750,7 @@ M:	Jingoo Han <jg1.han@samsung.com>
 L:	linux-fbdev@vger.kernel.org
 S:	Maintained
 F:	drivers/video/exynos/exynos_dp*
+F:	include/video/exynos_dp*
 
 EXYNOS MIPI DISPLAY DRIVERS
 M:	Inki Dae <inki.dae@samsung.com>
@@ -3155,8 +3156,7 @@ S:	Maintained
 F:	drivers/media/video/gspca/t613.c
 
 GSPCA USB WEBCAM DRIVER
-M:	Jean-Francois Moine <moinejf@free.fr>
-W:	http://moinejf.free.fr
+M:	Hans de Goede <hdegoede@redhat.com>
 L:	linux-media@vger.kernel.org
 T:	git git://git.kernel.org/pub/scm/linux/kernel/git/mchehab/linux-media.git
 S:	Maintained
@@ -5526,6 +5526,18 @@ S:	Maintained
 F:	Documentation/video4linux/README.pvrusb2
 F:	drivers/media/video/pvrusb2/
 
+PWM SUBSYSTEM
+M:	Thierry Reding <thierry.reding@avionic-design.de>
+L:	linux-kernel@vger.kernel.org
+S:	Maintained
+W:	http://gitorious.org/linux-pwm
+T:	git git://gitorious.org/linux-pwm/linux-pwm.git
+F:	Documentation/pwm.txt
+F:	Documentation/devicetree/bindings/pwm/
+F:	include/linux/pwm.h
+F:	include/linux/of_pwm.h
+F:	drivers/pwm/
+
 PXA2xx/PXA3xx SUPPORT
 M:	Eric Miao <eric.y.miao@gmail.com>
 M:	Russell King <linux@arm.linux.org.uk>
@@ -5899,6 +5911,16 @@ M:	Jingoo Han <jg1.han@samsung.com>
 L:	linux-fbdev@vger.kernel.org
 S:	Maintained
 F:	drivers/video/s3c-fb.c
+
+SAMSUNG MULTIFUNCTION DEVICE DRIVERS
+M:	Sangbeom Kim <sbkim73@samsung.com>
+L:	linux-kernel@vger.kernel.org
+S:	Supported
+F:	drivers/mfd/sec*.c
+F:	drivers/regulator/s2m*.c
+F:	drivers/regulator/s5m*.c
+F:	drivers/rtc/rtc-sec.c
+F:	include/linux/mfd/samsung/
 
 SERIAL DRIVERS
 M:	Alan Cox <alan@linux.intel.com>
