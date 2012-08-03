@@ -86,6 +86,7 @@
 #define RTL_PCI_700F_DID	0x700F
 #define RTL_PCI_701F_DID	0x701F
 #define RTL_PCI_DLINK_DID	0x3304
+#define RTL_PCI_8723AE_DID	0x8723	/*8723e */
 #define RTL_PCI_8192CET_DID	0x8191	/*8192ce */
 #define RTL_PCI_8192CE_DID	0x8178	/*8192ce */
 #define RTL_PCI_8191CE_DID	0x8177	/*8192ce */
@@ -212,6 +213,7 @@ struct mp_adapter {
 	u16 pcibridge_vendorid;
 	u16 pcibridge_deviceid;
 
+	u32 pcicfg_addrport;
 	u8 num4bytes;
 
 	u8 pcibridge_pciehdr_offset;

@@ -532,8 +532,14 @@ static void _rtl92d_fill_h2c_command(struct ieee80211_hw *hw,
 void rtl92d_fill_h2c_cmd(struct ieee80211_hw *hw,
 			 u8 element_id, u32 cmd_len, u8 *cmdbuffer)
 {
+	struct rtl_hal *rtlhal = rtl_hal(rtl_priv(hw));
 	u32 tmp_cmdbuf[2];
 
+	if (rtlhal->fw_ready == false) {
+		RT_ASSERT(false,
+			  "return H2C cmd because of Fw download fail!!!\n");
+		return;
+	}
 	memset(tmp_cmdbuf, 0, 8);
 	memcpy(tmp_cmdbuf, cmdbuffer, cmd_len);
 	_rtl92d_fill_h2c_command(hw, element_id, cmd_len, (u8 *)&tmp_cmdbuf);

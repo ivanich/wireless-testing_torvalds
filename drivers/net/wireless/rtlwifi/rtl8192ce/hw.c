@@ -897,7 +897,6 @@ int rtl92ce_hw_init(struct ieee80211_hw *hw)
 	struct rtl_phy *rtlphy = &(rtlpriv->phy);
 	struct rtl_pci *rtlpci = rtl_pcidev(rtl_pcipriv(hw));
 	struct rtl_ps_ctl *ppsc = rtl_psc(rtl_priv(hw));
-	static bool iqk_initialized; /* initialized to false */
 	bool rtstatus = true;
 	bool is92c;
 	int err;
@@ -922,9 +921,29 @@ int rtl92ce_hw_init(struct ieee80211_hw *hw)
 
 	rtlhal->last_hmeboxnum = 0;
 	rtl92c_phy_mac_config(hw);
+	/* because last function modify RCR, we update
+	 * rcr var here, or TP will unstable for receive_config
+	 * is wrong, RX RCR_ACRC32 will cause TP unstabel & Rx
+	 * RCR_APP_ICV will cause mac80211 unassoc for Cisco 1252 */
+	rtlpci->receive_config = rtl_read_dword(rtlpriv, REG_RCR);
+	rtlpci->receive_config &= ~(RCR_ACRC32 | RCR_AICV);
+	rtl_write_dword(rtlpriv, REG_RCR, rtlpci->receive_config);
+
 	rtl92c_phy_bb_config(hw);
 	rtlphy->rf_mode = RF_OP_BY_SW_3WIRE;
 	rtl92c_phy_rf_config(hw);
+	if (IS_VENDOR_UMC_A_CUT(rtlhal->version) &&
+	    !IS_92C_SERIAL(rtlhal->version)) {
+		rtl_set_rfreg(hw, RF90_PATH_A, RF_RX_G1, MASKDWORD, 0x30255);
+		rtl_set_rfreg(hw, RF90_PATH_A, RF_RX_G2, MASKDWORD, 0x50a00);
+	} else if (IS_81xxC_VENDOR_UMC_B_CUT(rtlhal->version)) {
+		rtl_set_rfreg(hw, RF90_PATH_A, 0x0C, MASKDWORD, 0x894AE);
+		rtl_set_rfreg(hw, RF90_PATH_A, 0x0A, MASKDWORD, 0x1AF31);
+		rtl_set_rfreg(hw, RF90_PATH_A, RF_IPA, MASKDWORD, 0x8F425);
+		rtl_set_rfreg(hw, RF90_PATH_A, RF_SYN_G2, MASKDWORD, 0x4F200);
+		rtl_set_rfreg(hw, RF90_PATH_A, RF_RCK1, MASKDWORD, 0x44053);
+		rtl_set_rfreg(hw, RF90_PATH_A, RF_RCK2, MASKDWORD, 0x80201);
+	}
 	rtlphy->rfreg_chnlval[0] = rtl_get_rfreg(hw, (enum radio_path)0,
 						 RF_CHNLBW, RFREG_OFFSET_MASK);
 	rtlphy->rfreg_chnlval[1] = rtl_get_rfreg(hw, (enum radio_path)1,
@@ -946,11 +965,11 @@ int rtl92ce_hw_init(struct ieee80211_hw *hw)
 
 	if (ppsc->rfpwr_state == ERFON) {
 		rtl92c_phy_set_rfpath_switch(hw, 1);
-		if (iqk_initialized) {
+		if (rtlphy->iqk_initialized) {
 			rtl92c_phy_iq_calibrate(hw, true);
 		} else {
 			rtl92c_phy_iq_calibrate(hw, false);
-			iqk_initialized = true;
+			rtlphy->iqk_initialized = true;
 		}
 
 		rtl92c_dm_check_txpower_tracking(hw);
@@ -988,38 +1007,79 @@ static enum version_8192c _rtl92ce_read_chip_version(struct ieee80211_hw *hw)
 	struct rtl_phy *rtlphy = &(rtlpriv->phy);
 	enum version_8192c version = VERSION_UNKNOWN;
 	u32 value32;
-	const char *versionid;
 
 	value32 = rtl_read_dword(rtlpriv, REG_SYS_CFG);
 	if (value32 & TRP_VAUX_EN) {
 		version = (value32 & TYPE_ID) ? VERSION_A_CHIP_92C :
 			   VERSION_A_CHIP_88C;
 	} else {
-		version = (value32 & TYPE_ID) ? VERSION_B_CHIP_92C :
-			   VERSION_B_CHIP_88C;
+		version = (enum version_8192c) NORMAL_CHIP;
+		version = (enum version_8192c) (version |
+			  ((value32 & TYPE_ID) ? CHIP_92C_BITMASK : 0));
+		version = (enum version_8192c) (version |
+			  ((value32 & VENDOR_ID) ? CHIP_VENDOR_UMC : 0));
+		if ((!IS_CHIP_VENDOR_UMC(version)) &&
+		    (value32 & CHIP_VER_RTL_MASK)) {
+			version = (enum version_8192c)(version |
+				  ((((value32 & CHIP_VER_RTL_MASK) == BIT(12))
+				  ? CHIP_VENDOR_UMC_B_CUT : CHIP_UNKNOW) |
+				  CHIP_VENDOR_UMC));
+		}
+		if (IS_92C_SERIAL(version)) {
+			value32 = rtl_read_dword(rtlpriv, REG_HPON_FSM);
+			version = (enum version_8192c)(version |
+				  ((CHIP_BONDING_IDENTIFIER(value32)
+				  == CHIP_BONDING_92C_1T2R) ?
+				  RF_TYPE_1T2R : 0));
+		}
 	}
 
 	switch (version) {
 	case VERSION_B_CHIP_92C:
-		versionid = "B_CHIP_92C";
+		RT_TRACE(rtlpriv, COMP_INIT, DBG_TRACE,
+			 "Chip Version ID: VERSION_B_CHIP_92C.\n");
 		break;
 	case VERSION_B_CHIP_88C:
-		versionid = "B_CHIP_88C";
+		RT_TRACE(rtlpriv, COMP_INIT, DBG_TRACE,
+			 "Chip Version ID: VERSION_B_CHIP_88C.\n");
 		break;
 	case VERSION_A_CHIP_92C:
-		versionid = "A_CHIP_92C";
+		RT_TRACE(rtlpriv, COMP_INIT, DBG_TRACE,
+			 "Chip Version ID: VERSION_A_CHIP_92C.\n");
 		break;
 	case VERSION_A_CHIP_88C:
-		versionid = "A_CHIP_88C";
+		RT_TRACE(rtlpriv, COMP_INIT, DBG_TRACE,
+			 "Chip Version ID: VERSION_A_CHIP_88C.\n");
+		break;
+	case VERSION_NORMAL_UMC_CHIP_92C_1T2R_A_CUT:
+		RT_TRACE(rtlpriv, COMP_INIT, DBG_TRACE,
+			 "Chip Version ID: VERSION_NORMAL_UMC_CHIP_92C_1T2R_A_CUT.\n");
+		break;
+	case VERSION_NORMAL_UMC_CHIP_92C_A_CUT:
+		RT_TRACE(rtlpriv, COMP_INIT, DBG_TRACE,
+			 "Chip Version ID: VERSION_NORMAL_UMC_CHIP_92C_A_CUT.\n");
+		break;
+	case VERSION_NORMAL_UMC_CHIP_88C_A_CUT:
+		RT_TRACE(rtlpriv, COMP_INIT, DBG_TRACE,
+			 "Chip Version ID: VERSION_NORMAL_UMC_CHIP_88C_A_CUT.\n");
+		break;
+	case VERSION_NORMAL_UMC_CHIP_92C_1T2R_B_CUT:
+		RT_TRACE(rtlpriv, COMP_INIT, DBG_TRACE,
+			 "Chip Version ID: VERSION_NORMAL_UMC_CHIP_92C_1T2R_B_CUT.\n");
+		break;
+	case VERSION_NORMAL_UMC_CHIP_92C_B_CUT:
+		RT_TRACE(rtlpriv, COMP_INIT, DBG_TRACE,
+			 "Chip Version ID: VERSION_NORMAL_UMC_CHIP_92C_B_CUT.\n");
+		break;
+	case VERSION_NORMAL_UMC_CHIP_88C_B_CUT:
+		RT_TRACE(rtlpriv, COMP_INIT, DBG_TRACE,
+			 "Chip Version ID: VERSION_NORMAL_UMC_CHIP_88C_B_CUT.\n");
 		break;
 	default:
-		versionid = "Unknown. Bug?";
+		RT_TRACE(rtlpriv, COMP_ERR, DBG_EMERG,
+			 "Chip Version ID: Unknown. Bug?\n");
 		break;
 	}
-
-	RT_TRACE(rtlpriv, COMP_INIT, DBG_TRACE,
-		 "Chip Version ID: %s\n", versionid);
-
 	switch (version & 0x3) {
 	case CHIP_88C:
 		rtlphy->rf_type = RF_1T1R;
@@ -1190,6 +1250,7 @@ static void _rtl92ce_poweroff_adapter(struct ieee80211_hw *hw)
 {
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
 	struct rtl_pci_priv *rtlpcipriv = rtl_pcipriv(hw);
+	struct rtl_hal *rtlhal = rtl_hal(rtl_priv(hw));
 	u8 u1b_tmp;
 	u32 u4b_tmp;
 
@@ -1218,7 +1279,8 @@ static void _rtl92ce_poweroff_adapter(struct ieee80211_hw *hw)
 	rtl_write_word(rtlpriv, REG_GPIO_IO_SEL, 0x0790);
 	rtl_write_word(rtlpriv, REG_LEDCFG0, 0x8080);
 	rtl_write_byte(rtlpriv, REG_AFE_PLL_CTRL, 0x80);
-	rtl_write_byte(rtlpriv, REG_SPS0_CTRL, 0x23);
+	if (!IS_81xxC_VENDOR_UMC_B_CUT(rtlhal->version))
+		rtl_write_byte(rtlpriv, REG_SPS0_CTRL, 0x23);
 	if (rtlpcipriv->bt_coexist.bt_coexistence) {
 		u4b_tmp = rtl_read_dword(rtlpriv, REG_AFE_XTAL_CTRL);
 		u4b_tmp |= 0x03824800;
@@ -1247,6 +1309,9 @@ void rtl92ce_card_disable(struct ieee80211_hw *hw)
 		rtlpriv->cfg->ops->led_control(hw, LED_CTL_POWER_OFF);
 	RT_SET_PS_LEVEL(ppsc, RT_RF_OFF_LEVL_HALT_NIC);
 	_rtl92ce_poweroff_adapter(hw);
+
+	/* after power off we should do iqk again */
+	rtlpriv->phy.iqk_initialized = false;
 }
 
 void rtl92ce_interrupt_recognized(struct ieee80211_hw *hw,
@@ -1711,6 +1776,8 @@ static void rtl92ce_update_hal_rate_table(struct ieee80211_hw *hw,
 		ratr_value = sta->supp_rates[1] << 4;
 	else
 		ratr_value = sta->supp_rates[0];
+	if (mac->opmode == NL80211_IFTYPE_ADHOC)
+		ratr_value = 0xfff;
 	ratr_value |= (sta->ht_cap.mcs.rx_mask[1] << 20 |
 			sta->ht_cap.mcs.rx_mask[0] << 12);
 	switch (wirelessmode) {
@@ -1815,6 +1882,8 @@ static void rtl92ce_update_hal_rate_mask(struct ieee80211_hw *hw,
 		ratr_bitmap = sta->supp_rates[1] << 4;
 	else
 		ratr_bitmap = sta->supp_rates[0];
+	if (mac->opmode == NL80211_IFTYPE_ADHOC)
+		ratr_bitmap = 0xfff;
 	ratr_bitmap |= (sta->ht_cap.mcs.rx_mask[1] << 20 |
 			sta->ht_cap.mcs.rx_mask[0] << 12);
 	switch (wirelessmode) {
@@ -1905,6 +1974,8 @@ static void rtl92ce_update_hal_rate_mask(struct ieee80211_hw *hw,
 			ratr_bitmap &= 0x0f0ff0ff;
 		break;
 	}
+	sta_entry->ratr_index = ratr_index;
+
 	RT_TRACE(rtlpriv, COMP_RATR, DBG_DMESG,
 		 "ratr_bitmap :%x\n", ratr_bitmap);
 	*(u32 *)&rate_mask = EF4BYTE((ratr_bitmap & 0x0fffffff) |
@@ -1916,9 +1987,6 @@ static void rtl92ce_update_hal_rate_mask(struct ieee80211_hw *hw,
 		 rate_mask[0], rate_mask[1], rate_mask[2], rate_mask[3],
 		 rate_mask[4]);
 	rtl92c_fill_h2c_cmd(hw, H2C_RA_MASK, 5, rate_mask);
-
-	if (macid != 0)
-		sta_entry->ratr_index = ratr_index;
 }
 
 void rtl92ce_update_hal_rate_tbl(struct ieee80211_hw *hw,

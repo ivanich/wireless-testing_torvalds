@@ -117,14 +117,20 @@ void rtl_watch_dog_timer_callback(unsigned long data);
 void rtl_deinit_deferred_work(struct ieee80211_hw *hw);
 
 bool rtl_action_proc(struct ieee80211_hw *hw, struct sk_buff *skb, u8 is_tx);
+bool rtl_tx_mgmt_proc(struct ieee80211_hw *hw, struct sk_buff *skb);
 u8 rtl_is_special_data(struct ieee80211_hw *hw, struct sk_buff *skb, u8 is_tx);
 
+void rtl_beacon_statistic(struct ieee80211_hw *hw, struct sk_buff *skb);
 void rtl_watch_dog_timer_callback(unsigned long data);
 int rtl_tx_agg_start(struct ieee80211_hw *hw, struct ieee80211_sta *sta,
 		     u16 tid, u16 *ssn);
 int rtl_tx_agg_stop(struct ieee80211_hw *hw, struct ieee80211_sta *sta,
 		    u16 tid);
 int rtl_tx_agg_oper(struct ieee80211_hw *hw, struct ieee80211_sta *sta,
+		    u16 tid);
+int rtl_rx_agg_start(struct ieee80211_hw *hw, struct ieee80211_sta *sta,
+		     u16 tid);
+int rtl_rx_agg_stop(struct ieee80211_hw *hw, struct ieee80211_sta *sta,
 		    u16 tid);
 void rtl_watchdog_wq_callback(void *data);
 

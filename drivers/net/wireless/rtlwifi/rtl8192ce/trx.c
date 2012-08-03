@@ -42,7 +42,7 @@ static u8 _rtl92ce_map_hwqueue_to_fwqueue(struct sk_buff *skb, u8 hw_queue)
 
 	if (unlikely(ieee80211_is_beacon(fc)))
 		return QSLT_BEACON;
-	if (ieee80211_is_mgmt(fc))
+	if (ieee80211_is_mgmt(fc) || ieee80211_is_ctl(fc))
 		return QSLT_MGNT;
 
 	return skb->priority;
@@ -127,13 +127,14 @@ static void _rtl92ce_query_rxphystatus(struct ieee80211_hw *hw,
 {
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
 	struct phy_sts_cck_8192s_t *cck_buf;
+	struct rtl_ps_ctl *ppsc = rtl_psc(rtlpriv);
 	s8 rx_pwr_all = 0, rx_pwr[4];
 	u8 evm, pwdb_all, rf_rx_num = 0;
 	u8 i, max_spatial_stream;
 	u32 rssi, total_rssi = 0;
-	bool in_powersavemode = false;
 	bool is_cck_rate;
 
+	/* Save data for next packet processing */
 	is_cck_rate = RX_HAL_IS_CCK_RATE(pdesc);
 	pstats->packet_matchbssid = packet_match_bssid;
 	pstats->packet_toself = packet_toself;
@@ -145,9 +146,14 @@ static void _rtl92ce_query_rxphystatus(struct ieee80211_hw *hw,
 
 	if (is_cck_rate) {
 		u8 report, cck_highpwr;
+
+		/* CCK info is not the same as OFDM */
 		cck_buf = (struct phy_sts_cck_8192s_t *)p_drvinfo;
 
-		if (!in_powersavemode)
+		/* (1)Hardware does not provide RSSI for CCK */
+		/* (2)PWDB, Average PWDB cacluated by
+		 * hardware (for rate adaptive) */
+		if (ppsc->rfpwr_state == ERFON)
 			cck_highpwr = (u8) rtl_get_bbreg(hw,
 						 RFPGA0_XA_HSSIPARAMETER2,
 						 BIT(9));
@@ -193,9 +199,26 @@ static void _rtl92ce_query_rxphystatus(struct ieee80211_hw *hw,
 		}
 
 		pwdb_all = _rtl92c_query_rxpwrpercentage(rx_pwr_all);
+		/* CCK gain is smaller than OFDM/MCS gain,
+		 * so we add gain diff by experiences,
+		 * the val is 6 */
+		pwdb_all += 6;
+		if (pwdb_all > 100)
+			pwdb_all = 100;
+		/* modify the offset to make the same
+		 * gain index with OFDM. */
+		if (pwdb_all > 34 && pwdb_all <= 42)
+			pwdb_all -= 2;
+		else if (pwdb_all > 26 && pwdb_all <= 34)
+			pwdb_all -= 6;
+		else if (pwdb_all > 14 && pwdb_all <= 26)
+			pwdb_all -= 8;
+		else if (pwdb_all > 4 && pwdb_all <= 14)
+			pwdb_all -= 4;
 		pstats->rx_pwdb_all = pwdb_all;
 		pstats->recvsignalpower = rx_pwr_all;
 
+		/* (3) Get Signal Quality (EVM) */
 		if (packet_match_bssid) {
 			u8 sq;
 			if (pstats->rx_pwdb_all > 40)
@@ -217,27 +240,39 @@ static void _rtl92ce_query_rxphystatus(struct ieee80211_hw *hw,
 	} else {
 		rtlpriv->dm.rfpath_rxenable[0] =
 		    rtlpriv->dm.rfpath_rxenable[1] = true;
+
+		/* (1)Get RSSI for HT rate */
 		for (i = RF90_PATH_A; i < RF90_PATH_MAX; i++) {
+
+			/* we will judge RF RX path now. */
 			if (rtlpriv->dm.rfpath_rxenable[i])
 				rf_rx_num++;
 
 			rx_pwr[i] =
 			    ((p_drvinfo->gain_trsw[i] & 0x3f) * 2) - 110;
+
+			/* Translate DBM to percentage. */
 			rssi = _rtl92c_query_rxpwrpercentage(rx_pwr[i]);
 			total_rssi += rssi;
+
+			/* Get Rx snr value in DB */
 			rtlpriv->stats.rx_snr_db[i] =
 			    (long)(p_drvinfo->rxsnr[i] / 2);
 
+			/* Record Signal Strength for next packet */
 			if (packet_match_bssid)
 				pstats->rx_mimo_signalstrength[i] = (u8) rssi;
 		}
 
+		/* (2)PWDB, Average PWDB cacluated by
+		 * hardware (for rate adaptive) */
 		rx_pwr_all = ((p_drvinfo->pwdb_all >> 1) & 0x7f) - 110;
 		pwdb_all = _rtl92c_query_rxpwrpercentage(rx_pwr_all);
 		pstats->rx_pwdb_all = pwdb_all;
 		pstats->rxpower = rx_pwr_all;
 		pstats->recvsignalpower = rx_pwr_all;
 
+		/* (3)EVM of HT rate */
 		if (pdesc->rxht && pdesc->rxmcs >= DESC92_RATEMCS8 &&
 		    pdesc->rxmcs <= DESC92_RATEMCS15)
 			max_spatial_stream = 2;
@@ -248,6 +283,8 @@ static void _rtl92ce_query_rxphystatus(struct ieee80211_hw *hw,
 			evm = _rtl92c_evm_db_to_percentage(p_drvinfo->rxevm[i]);
 
 			if (packet_match_bssid) {
+				/* Fill value in RFD, Get the first
+				 * spatial stream only */
 				if (i == 0)
 					pstats->signalquality =
 					    (u8) (evm & 0xff);
@@ -257,6 +294,8 @@ static void _rtl92ce_query_rxphystatus(struct ieee80211_hw *hw,
 		}
 	}
 
+	/* UI BSS List signal strength(in percentage),
+	 * make it good looking, from 0~100. */
 	if (is_cck_rate)
 		pstats->signalstrength =
 		    (u8) (_rtl92ce_signal_scale_mapping(hw, pwdb_all));
@@ -534,6 +573,7 @@ bool rtl92ce_rx_query_desc(struct ieee80211_hw *hw,
 {
 	struct rx_fwinfo_92c *p_drvinfo;
 	struct rx_desc_92c *pdesc = (struct rx_desc_92c *)p_desc;
+	struct ieee80211_hdr *hdr;
 
 	u32 phystatus = GET_RX_DESC_PHYST(pdesc);
 	stats->length = (u16) GET_RX_DESC_PKT_LEN(pdesc);
@@ -558,7 +598,10 @@ bool rtl92ce_rx_query_desc(struct ieee80211_hw *hw,
 	if (GET_RX_DESC_CRC32(pdesc))
 		rx_status->flag |= RX_FLAG_FAILED_FCS_CRC;
 
-	if (!GET_RX_DESC_SWDEC(pdesc))
+	hdr = (struct ieee80211_hdr *)(skb->data + stats->rx_drvinfo_size
+			+ stats->rx_bufshift);
+
+	if (stats->crc)
 		rx_status->flag |= RX_FLAG_DECRYPTED;
 
 	if (GET_RX_DESC_BW(pdesc))
@@ -569,9 +612,24 @@ bool rtl92ce_rx_query_desc(struct ieee80211_hw *hw,
 
 	rx_status->flag |= RX_FLAG_MACTIME_MPDU;
 
-	if (stats->decrypted)
-		rx_status->flag |= RX_FLAG_DECRYPTED;
+	/* hw will set status->decrypted true, if it finds the
+	 * frame is open data frame or mgmt frame.
+	 * Thus hw will not decrypt robust managment frame
+	 * for IEEE80211w but still set status->decrypted
+	 * true, so here we should set it back to undecrypted
+	 * for IEEE80211w frame, and mac80211 sw will help
+	 * to decrypt it */
+	if (stats->decrypted) {
+		if ((ieee80211_is_robust_mgmt_frame(hdr)) &&
+		    (ieee80211_has_protected(hdr->frame_control)))
+			rx_status->flag &= ~RX_FLAG_DECRYPTED;
+		else
+			rx_status->flag |= RX_FLAG_DECRYPTED;
+	}
 
+	/* rate_idx: index of data rate into band's
+	 * supported rates or MCS index if HT rates
+	 * are in use (RX_FLAG_HT)*/
 	rx_status->rate_idx = rtlwifi_rate_mapping(hw,
 				(bool)GET_RX_DESC_RXHT(pdesc),
 				(u8)GET_RX_DESC_RXMCS(pdesc),
