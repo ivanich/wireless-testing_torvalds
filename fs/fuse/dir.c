@@ -405,7 +405,7 @@ static int fuse_create_open(struct inode *dir, struct dentry *entry,
 	memset(&inarg, 0, sizeof(inarg));
 	memset(&outentry, 0, sizeof(outentry));
 	inarg.flags = flags;
-	inarg.mode = mode;
+	inarg.mode = mode | S_IFREG; /* Userspace expects S_IFREG */
 	inarg.umask = current_umask();
 	req->in.h.opcode = FUSE_CREATE;
 	req->in.h.nodeid = get_node_id(dir);
