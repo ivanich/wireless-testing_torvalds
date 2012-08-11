@@ -513,7 +513,7 @@ static void hci_setup_event_mask(struct hci_dev *hdev)
 	if (hdev->features[3] & LMP_RSSI_INQ)
 		events[4] |= 0x02; /* Inquiry Result with RSSI */
 
-	if (hdev->features[5] & LMP_SNIFF_SUBR)
+	if (lmp_sniffsubr_capable(hdev))
 		events[5] |= 0x20; /* Sniff Subrating */
 
 	if (hdev->features[5] & LMP_PAUSE_ENC)
@@ -522,13 +522,13 @@ static void hci_setup_event_mask(struct hci_dev *hdev)
 	if (hdev->features[6] & LMP_EXT_INQ)
 		events[5] |= 0x40; /* Extended Inquiry Result */
 
-	if (hdev->features[6] & LMP_NO_FLUSH)
+	if (lmp_no_flush_capable(hdev))
 		events[7] |= 0x01; /* Enhanced Flush Complete */
 
 	if (hdev->features[7] & LMP_LSTO)
 		events[6] |= 0x80; /* Link Supervision Timeout Changed */
 
-	if (hdev->features[6] & LMP_SIMPLE_PAIR) {
+	if (lmp_ssp_capable(hdev)) {
 		events[6] |= 0x01;	/* IO Capability Request */
 		events[6] |= 0x02;	/* IO Capability Response */
 		events[6] |= 0x04;	/* User Confirmation Request */
@@ -541,7 +541,7 @@ static void hci_setup_event_mask(struct hci_dev *hdev)
 					 * Features Notification */
 	}
 
-	if (hdev->features[4] & LMP_LE)
+	if (lmp_le_capable(hdev))
 		events[7] |= 0x20;	/* LE Meta-Event */
 
 	hci_send_cmd(hdev, HCI_OP_SET_EVENT_MASK, sizeof(events), events);
@@ -623,11 +623,11 @@ static void hci_setup_link_policy(struct hci_dev *hdev)
 	struct hci_cp_write_def_link_policy cp;
 	u16 link_policy = 0;
 
-	if (hdev->features[0] & LMP_RSWITCH)
+	if (lmp_rswitch_capable(hdev))
 		link_policy |= HCI_LP_RSWITCH;
 	if (hdev->features[0] & LMP_HOLD)
 		link_policy |= HCI_LP_HOLD;
-	if (hdev->features[0] & LMP_SNIFF)
+	if (lmp_sniff_capable(hdev))
 		link_policy |= HCI_LP_SNIFF;
 	if (hdev->features[1] & LMP_PARK)
 		link_policy |= HCI_LP_PARK;
@@ -686,7 +686,7 @@ static void hci_cc_read_local_features(struct hci_dev *hdev,
 		hdev->esco_type |= (ESCO_HV3);
 	}
 
-	if (hdev->features[3] & LMP_ESCO)
+	if (lmp_esco_capable(hdev))
 		hdev->esco_type |= (ESCO_EV3);
 
 	if (hdev->features[4] & LMP_EV4)
@@ -746,7 +746,7 @@ static void hci_cc_read_local_ext_features(struct hci_dev *hdev,
 		break;
 	}
 
-	if (test_bit(HCI_INIT, &hdev->flags) && hdev->features[4] & LMP_LE)
+	if (test_bit(HCI_INIT, &hdev->flags) && lmp_le_capable(hdev))
 		hci_set_le_support(hdev);
 
 done:
@@ -1365,6 +1365,9 @@ static bool hci_resolve_next_name(struct hci_dev *hdev)
 		return false;
 
 	e = hci_inquiry_cache_lookup_resolve(hdev, BDADDR_ANY, NAME_NEEDED);
+	if (!e)
+		return false;
+
 	if (hci_resolve_name(hdev, e) == 0) {
 		e->name_state = NAME_PENDING;
 		return true;
@@ -1393,12 +1396,20 @@ static void hci_check_pending_name(struct hci_dev *hdev, struct hci_conn *conn,
 		return;
 
 	e = hci_inquiry_cache_lookup_resolve(hdev, bdaddr, NAME_PENDING);
-	if (e) {
+	/* If the device was not found in a list of found devices names of which
+	 * are pending. there is no need to continue resolving a next name as it
+	 * will be done upon receiving another Remote Name Request Complete
+	 * Event */
+	if (!e)
+		return;
+
+	list_del(&e->list);
+	if (name) {
 		e->name_state = NAME_KNOWN;
-		list_del(&e->list);
-		if (name)
-			mgmt_remote_name(hdev, bdaddr, ACL_LINK, 0x00,
-					 e->data.rssi, name, name_len);
+		mgmt_remote_name(hdev, bdaddr, ACL_LINK, 0x00,
+				 e->data.rssi, name, name_len);
+	} else {
+		e->name_state = NAME_NOT_KNOWN;
 	}
 
 	if (hci_resolve_next_name(hdev))
@@ -1614,43 +1625,30 @@ static void hci_cs_disconnect(struct hci_dev *hdev, u8 status)
 
 static void hci_cs_le_create_conn(struct hci_dev *hdev, __u8 status)
 {
-	struct hci_cp_le_create_conn *cp;
 	struct hci_conn *conn;
 
 	BT_DBG("%s status 0x%2.2x", hdev->name, status);
 
-	cp = hci_sent_cmd_data(hdev, HCI_OP_LE_CREATE_CONN);
-	if (!cp)
-		return;
-
-	hci_dev_lock(hdev);
-
-	conn = hci_conn_hash_lookup_ba(hdev, LE_LINK, &cp->peer_addr);
-
-	BT_DBG("%s bdaddr %s conn %p", hdev->name, batostr(&cp->peer_addr),
-	       conn);
-
 	if (status) {
-		if (conn && conn->state == BT_CONNECT) {
-			conn->state = BT_CLOSED;
-			mgmt_connect_failed(hdev, &cp->peer_addr, conn->type,
-					    conn->dst_type, status);
-			hci_proto_connect_cfm(conn, status);
-			hci_conn_del(conn);
-		}
-	} else {
-		if (!conn) {
-			conn = hci_conn_add(hdev, LE_LINK, &cp->peer_addr);
-			if (conn) {
-				conn->dst_type = cp->peer_addr_type;
-				conn->out = true;
-			} else {
-				BT_ERR("No memory for new connection");
-			}
-		}
-	}
+		hci_dev_lock(hdev);
 
-	hci_dev_unlock(hdev);
+		conn = hci_conn_hash_lookup_state(hdev, LE_LINK, BT_CONNECT);
+		if (!conn) {
+			hci_dev_unlock(hdev);
+			return;
+		}
+
+		BT_DBG("%s bdaddr %s conn %p", hdev->name, batostr(&conn->dst),
+		       conn);
+
+		conn->state = BT_CLOSED;
+		mgmt_connect_failed(hdev, &conn->dst, conn->type,
+				    conn->dst_type, status);
+		hci_proto_connect_cfm(conn, status);
+		hci_conn_del(conn);
+
+		hci_dev_unlock(hdev);
+	}
 }
 
 static void hci_cs_le_start_enc(struct hci_dev *hdev, u8 status)
@@ -1762,7 +1760,12 @@ static void hci_conn_complete_evt(struct hci_dev *hdev, struct sk_buff *skb)
 		if (conn->type == ACL_LINK) {
 			conn->state = BT_CONFIG;
 			hci_conn_hold(conn);
-			conn->disc_timeout = HCI_DISCONN_TIMEOUT;
+
+			if (!conn->out && !hci_conn_ssp_enabled(conn) &&
+			    !hci_find_link_key(hdev, &ev->bdaddr))
+				conn->disc_timeout = HCI_PAIRING_TIMEOUT;
+			else
+				conn->disc_timeout = HCI_DISCONN_TIMEOUT;
 		} else
 			conn->state = BT_CONNECTED;
 
@@ -3252,12 +3255,8 @@ static void hci_user_passkey_request_evt(struct hci_dev *hdev,
 
 	BT_DBG("%s", hdev->name);
 
-	hci_dev_lock(hdev);
-
 	if (test_bit(HCI_MGMT, &hdev->dev_flags))
 		mgmt_user_passkey_request(hdev, &ev->bdaddr, ACL_LINK, 0);
-
-	hci_dev_unlock(hdev);
 }
 
 static void hci_simple_pair_complete_evt(struct hci_dev *hdev,
@@ -3350,29 +3349,29 @@ static void hci_le_conn_complete_evt(struct hci_dev *hdev, struct sk_buff *skb)
 
 	hci_dev_lock(hdev);
 
-	if (ev->status) {
-		conn = hci_conn_hash_lookup_state(hdev, LE_LINK, BT_CONNECT);
-		if (!conn)
+	conn = hci_conn_hash_lookup_state(hdev, LE_LINK, BT_CONNECT);
+	if (!conn) {
+		conn = hci_conn_add(hdev, LE_LINK, &ev->bdaddr);
+		if (!conn) {
+			BT_ERR("No memory for new connection");
 			goto unlock;
+		}
 
+		conn->dst_type = ev->bdaddr_type;
+
+		if (ev->role == LE_CONN_ROLE_MASTER) {
+			conn->out = true;
+			conn->link_mode |= HCI_LM_MASTER;
+		}
+	}
+
+	if (ev->status) {
 		mgmt_connect_failed(hdev, &conn->dst, conn->type,
 				    conn->dst_type, ev->status);
 		hci_proto_connect_cfm(conn, ev->status);
 		conn->state = BT_CLOSED;
 		hci_conn_del(conn);
 		goto unlock;
-	}
-
-	conn = hci_conn_hash_lookup_ba(hdev, LE_LINK, &ev->bdaddr);
-	if (!conn) {
-		conn = hci_conn_add(hdev, LE_LINK, &ev->bdaddr);
-		if (!conn) {
-			BT_ERR("No memory for new connection");
-			hci_dev_unlock(hdev);
-			return;
-		}
-
-		conn->dst_type = ev->bdaddr_type;
 	}
 
 	if (!test_and_set_bit(HCI_CONN_MGMT_CONNECTED, &conn->flags))
