@@ -185,11 +185,11 @@ bool _rtl92cu_phy_config_bb_with_headerfile(struct ieee80211_hw *hw,
 	if (configtype == BASEBAND_CONFIG_PHY_REG) {
 		for (i = 0; i < phy_reg_arraylen; i = i + 2) {
 			if (phy_regarray_table[i] == 0xfe)
-				rtl_mdelay(50);
+				mdelay(50);
 			else if (phy_regarray_table[i] == 0xfd)
-				rtl_mdelay(5);
+				mdelay(5);
 			else if (phy_regarray_table[i] == 0xfc)
-				rtl_mdelay(1);
+				mdelay(1);
 			else if (phy_regarray_table[i] == 0xfb)
 				udelay(50);
 			else if (phy_regarray_table[i] == 0xfa)
@@ -233,11 +233,11 @@ bool _rtl92cu_phy_config_bb_with_pgheaderfile(struct ieee80211_hw *hw,
 	if (configtype == BASEBAND_CONFIG_PHY_REG) {
 		for (i = 0; i < phy_regarray_pg_len; i = i + 3) {
 			if (phy_regarray_table_pg[i] == 0xfe)
-				rtl_mdelay(50);
+				mdelay(50);
 			else if (phy_regarray_table_pg[i] == 0xfd)
-				rtl_mdelay(5);
+				mdelay(5);
 			else if (phy_regarray_table_pg[i] == 0xfc)
-				rtl_mdelay(1);
+				mdelay(1);
 			else if (phy_regarray_table_pg[i] == 0xfb)
 				udelay(50);
 			else if (phy_regarray_table_pg[i] == 0xfa)
@@ -291,11 +291,11 @@ bool rtl92cu_phy_config_rf_with_headerfile(struct ieee80211_hw *hw,
 	case RF90_PATH_A:
 		for (i = 0; i < radioa_arraylen; i = i + 2) {
 			if (radioa_array_table[i] == 0xfe)
-				rtl_mdelay(50);
+				mdelay(50);
 			else if (radioa_array_table[i] == 0xfd)
-				rtl_mdelay(5);
+				mdelay(5);
 			else if (radioa_array_table[i] == 0xfc)
-				rtl_mdelay(1);
+				mdelay(1);
 			else if (radioa_array_table[i] == 0xfb)
 				udelay(50);
 			else if (radioa_array_table[i] == 0xfa)
@@ -313,11 +313,11 @@ bool rtl92cu_phy_config_rf_with_headerfile(struct ieee80211_hw *hw,
 	case RF90_PATH_B:
 		for (i = 0; i < radiob_arraylen; i = i + 2) {
 			if (radiob_array_table[i] == 0xfe) {
-				rtl_mdelay(50);
+				mdelay(50);
 			} else if (radiob_array_table[i] == 0xfd)
-				rtl_mdelay(5);
+				mdelay(5);
 			else if (radiob_array_table[i] == 0xfc)
-				rtl_mdelay(1);
+				mdelay(1);
 			else if (radiob_array_table[i] == 0xfb)
 				udelay(50);
 			else if (radiob_array_table[i] == 0xfa)
@@ -442,7 +442,7 @@ void _rtl92cu_phy_lc_calibrate(struct ieee80211_hw *hw, bool is2t)
 	}
 	lc_cal = rtl_get_rfreg(hw, RF90_PATH_A, 0x18, MASK12BITS);
 	rtl_set_rfreg(hw, RF90_PATH_A, 0x18, MASK12BITS, lc_cal | 0x08000);
-	rtl_mdelay(100);
+	mdelay(100);
 	if ((tmpreg & 0x70) != 0) {
 		rtl_write_byte(rtlpriv, 0xd03, tmpreg);
 		rtl_set_rfreg(hw, RF90_PATH_A, 0x00, MASK12BITS, rf_a_mode);

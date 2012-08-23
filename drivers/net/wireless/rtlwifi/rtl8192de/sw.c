@@ -106,7 +106,8 @@ static int rtl92d_init_sw_vars(struct ieee80211_hw *hw)
 
 	if (rtlpriv->rtlhal.macphymode != SINGLEMAC_SINGLEPHY) {
 		rtlpriv->rtlhal.disable_amsdu_8k = true;
-		rtlpriv->dm.supp_phymode_switch = false;
+		/* No long RX - reduce fragmentation */
+		rtlpci->rxbuffersize = 4096;
 	}
 
 	rtlpci->transmit_config = CFENDFORM | BIT(12) | BIT(13);
@@ -249,8 +250,6 @@ static struct rtl_hal_ops rtl8192de_hal_ops = {
 	.get_rfreg = rtl92d_phy_query_rf_reg,
 	.set_rfreg = rtl92d_phy_set_rf_reg,
 	.linked_set_reg = rtl92d_linked_set_reg,
-	.check_switch_to_dmdp = rtl92d_easy_concurrent_switch_to_dmdp,
-	.dualmac_easy_concurrent = rtl_dualmac_easyconcurrent,
 };
 
 static struct rtl_mod_params rtl92de_mod_params = {
@@ -289,7 +288,6 @@ static struct rtl_hal_cfg rtl92de_hal_cfg = {
 	.maps[EFUSE_HWSET_MAX_SIZE] = HWSET_MAX_SIZE,
 	.maps[EFUSE_MAX_SECTION_MAP] = EFUSE_MAX_SECTION,
 	.maps[EFUSE_REAL_CONTENT_SIZE] = EFUSE_REAL_CONTENT_LEN,
-	.maps[EFUSE_OOB_PROTECT_BYTES_LEN] = EFUSE_OOB_PROTECT_BYTES,
 
 	.maps[RWCAM] = REG_CAMCMD,
 	.maps[WCAMI] = REG_CAMWRITE,

@@ -30,7 +30,6 @@
 #include "../wifi.h"
 #include "../pci.h"
 #include "../ps.h"
-#include "../base.h"
 #include "reg.h"
 #include "def.h"
 #include "phy.h"
@@ -587,11 +586,11 @@ static bool _rtl92d_phy_config_bb_with_headerfile(struct ieee80211_hw *hw,
 	if (configtype == BASEBAND_CONFIG_PHY_REG) {
 		for (i = 0; i < phy_reg_arraylen; i = i + 2) {
 			if (phy_regarray_table[i] == 0xfe)
-				rtl_mdelay(50);
+				mdelay(50);
 			else if (phy_regarray_table[i] == 0xfd)
-				rtl_mdelay(5);
+				mdelay(5);
 			else if (phy_regarray_table[i] == 0xfc)
-				rtl_mdelay(1);
+				mdelay(1);
 			else if (phy_regarray_table[i] == 0xfb)
 				udelay(50);
 			else if (phy_regarray_table[i] == 0xfa)
@@ -726,11 +725,11 @@ static bool _rtl92d_phy_config_bb_with_pgheaderfile(struct ieee80211_hw *hw,
 	if (configtype == BASEBAND_CONFIG_PHY_REG) {
 		for (i = 0; i < phy_regarray_pg_len; i = i + 3) {
 			if (phy_regarray_table_pg[i] == 0xfe)
-				rtl_mdelay(50);
+				mdelay(50);
 			else if (phy_regarray_table_pg[i] == 0xfd)
-				rtl_mdelay(5);
+				mdelay(5);
 			else if (phy_regarray_table_pg[i] == 0xfc)
-				rtl_mdelay(1);
+				mdelay(1);
 			else if (phy_regarray_table_pg[i] == 0xfb)
 				udelay(50);
 			else if (phy_regarray_table_pg[i] == 0xfa)
@@ -864,13 +863,13 @@ bool rtl92d_phy_config_rf_with_headerfile(struct ieee80211_hw *hw,
 	case RF90_PATH_A:
 		for (i = 0; i < radioa_arraylen; i = i + 2) {
 			if (radioa_array_table[i] == 0xfe) {
-				rtl_mdelay(50);
+				mdelay(50);
 			} else if (radioa_array_table[i] == 0xfd) {
 				/* delay_ms(5); */
-				rtl_mdelay(5);
+				mdelay(5);
 			} else if (radioa_array_table[i] == 0xfc) {
 				/* delay_ms(1); */
-				rtl_mdelay(1);
+				mdelay(1);
 			} else if (radioa_array_table[i] == 0xfb) {
 				udelay(50);
 			} else if (radioa_array_table[i] == 0xfa) {
@@ -891,13 +890,13 @@ bool rtl92d_phy_config_rf_with_headerfile(struct ieee80211_hw *hw,
 			if (radiob_array_table[i] == 0xfe) {
 				/* Delay specific ms. Only RF configuration
 				 * requires delay. */
-				rtl_mdelay(50);
+				mdelay(50);
 			} else if (radiob_array_table[i] == 0xfd) {
 				/* delay_ms(5); */
-				rtl_mdelay(5);
+				mdelay(5);
 			} else if (radiob_array_table[i] == 0xfc) {
 				/* delay_ms(1); */
-				rtl_mdelay(1);
+				mdelay(1);
 			} else if (radiob_array_table[i] == 0xfb) {
 				udelay(50);
 			} else if (radiob_array_table[i] == 0xfa) {
@@ -1207,7 +1206,7 @@ static void rtl92d_phy_switch_wirelessband(struct ieee80211_hw *hw, u8 band)
 		rtl_write_byte(rtlpriv, (rtlhal->interfaceindex ==
 			0 ? REG_MAC0 : REG_MAC1), value8);
 	}
-	rtl_mdelay(1);
+	mdelay(1);
 	RT_TRACE(rtlpriv, COMP_INIT, DBG_LOUD, "<==Switch Band OK\n");
 }
 
@@ -1567,7 +1566,7 @@ static u8 _rtl92d_phy_patha_iqk(struct ieee80211_hw *hw, bool configpathb)
 	RTPRINT(rtlpriv, FINIT, INIT_IQK,
 		"Delay %d ms for One shot, path A LOK & IQK\n",
 		IQK_DELAY_TIME);
-	rtl_mdelay(IQK_DELAY_TIME);
+	mdelay(IQK_DELAY_TIME);
 	/* Check failed */
 	regeac = rtl_get_bbreg(hw, 0xeac, BMASKDWORD);
 	RTPRINT(rtlpriv, FINIT, INIT_IQK,  "0xeac = 0x%x\n", regeac);
@@ -1638,7 +1637,7 @@ static u8 _rtl92d_phy_patha_iqk_5g_normal(struct ieee80211_hw *hw,
 		RTPRINT(rtlpriv, FINIT, INIT_IQK,
 			"Delay %d ms for One shot, path A LOK & IQK.\n",
 			IQK_DELAY_TIME);
-		rtl_mdelay(IQK_DELAY_TIME * 10);
+		mdelay(IQK_DELAY_TIME * 10);
 		/* Check failed */
 		regeac = rtl_get_bbreg(hw, 0xeac, BMASKDWORD);
 		RTPRINT(rtlpriv, FINIT, INIT_IQK,  "0xeac = 0x%x\n", regeac);
@@ -1690,7 +1689,7 @@ static u8 _rtl92d_phy_pathb_iqk(struct ieee80211_hw *hw)
 	/* delay x ms  */
 	RTPRINT(rtlpriv, FINIT, INIT_IQK,
 		"Delay %d ms for One shot, path B LOK & IQK\n", IQK_DELAY_TIME);
-	rtl_mdelay(IQK_DELAY_TIME);
+	mdelay(IQK_DELAY_TIME);
 	/* Check failed */
 	regeac = rtl_get_bbreg(hw, 0xeac, BMASKDWORD);
 	RTPRINT(rtlpriv, FINIT, INIT_IQK,  "0xeac = 0x%x\n", regeac);
@@ -1757,7 +1756,7 @@ static u8 _rtl92d_phy_pathb_iqk_5g_normal(struct ieee80211_hw *hw)
 		/* delay x ms */
 		RTPRINT(rtlpriv, FINIT, INIT_IQK,
 			"Delay %d ms for One shot, path B LOK & IQK.\n", 10);
-		rtl_mdelay(IQK_DELAY_TIME * 10);
+		mdelay(IQK_DELAY_TIME * 10);
 
 		/* Check failed */
 		regeac = rtl_get_bbreg(hw, 0xeac, BMASKDWORD);
@@ -2088,7 +2087,7 @@ static void _rtl92d_phy_iq_calibrate_5g_normal(struct ieee80211_hw *hw,
 	 * PHY_REG.txt , and radio_a, radio_b.txt */
 
 	RTPRINT(rtlpriv, FINIT, INIT_IQK,  "IQK for 5G NORMAL:Start!!!\n");
-	rtl_mdelay(IQK_DELAY_TIME * 20);
+	mdelay(IQK_DELAY_TIME * 20);
 	if (t == 0) {
 		bbvalue = rtl_get_bbreg(hw, RFPGA0_RFMOD, BMASKDWORD);
 		RTPRINT(rtlpriv, FINIT, INIT_IQK,  "==>0x%08x\n", bbvalue);
@@ -2388,7 +2387,7 @@ void rtl92d_phy_iq_calibrate(struct ieee80211_hw *hw)
 	struct rtl_phy *rtlphy = &(rtlpriv->phy);
 	struct rtl_hal *rtlhal = &(rtlpriv->rtlhal);
 	long result[4][8];
-	u8 i, final_candidate, index;
+	u8 i, final_candidate, indexforchannel;
 	bool patha_ok, pathb_ok;
 	long rege94, rege9c, regea4, regeac, regeb4;
 	long regebc, regec4, regecc, regtmp = 0;
@@ -2495,17 +2494,17 @@ void rtl92d_phy_iq_calibrate(struct ieee80211_hw *hw)
 						final_candidate, (regec4 == 0));
 	}
 	if (final_candidate != 0xFF) {
-		index = rtl92d_get_rightchnlplace_for_iqk(
+		indexforchannel = rtl92d_get_rightchnlplace_for_iqk(
 				  rtlphy->current_channel);
 
 		for (i = 0; i < IQK_MATRIX_REG_NUM; i++)
-			rtlphy->iqk_matrix_regsetting[index].
+			rtlphy->iqk_matrix_regsetting[indexforchannel].
 				value[0][i] = result[final_candidate][i];
-		rtlphy->iqk_matrix_regsetting[index].iqk_done =
+		rtlphy->iqk_matrix_regsetting[indexforchannel].iqk_done =
 			true;
 
 		RT_TRACE(rtlpriv, COMP_SCAN | COMP_MLME, DBG_LOUD,
-			 "IQK OK index %d\n", index);
+			 "IQK OK indexforchannel %d\n", indexforchannel);
 	}
 }
 
@@ -2514,46 +2513,46 @@ void rtl92d_phy_reload_iqk_setting(struct ieee80211_hw *hw, u8 channel)
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
 	struct rtl_phy *rtlphy = &(rtlpriv->phy);
 	struct rtl_hal *rtlhal = &(rtlpriv->rtlhal);
-	u8 index;
+	u8 indexforchannel;
 
 	RT_TRACE(rtlpriv, COMP_CMD, DBG_LOUD, "channel %d\n", channel);
 	/*------Do IQK for normal chip and test chip 5G band------- */
-	index = rtl92d_get_rightchnlplace_for_iqk(channel);
-	RT_TRACE(rtlpriv, COMP_CMD, DBG_LOUD, "index %d done %d\n",
-		 index,
-		 rtlphy->iqk_matrix_regsetting[index].iqk_done);
-	if (0 && !rtlphy->iqk_matrix_regsetting[index].iqk_done &&
+	indexforchannel = rtl92d_get_rightchnlplace_for_iqk(channel);
+	RT_TRACE(rtlpriv, COMP_CMD, DBG_LOUD, "indexforchannel %d done %d\n",
+		 indexforchannel,
+		 rtlphy->iqk_matrix_regsetting[indexforchannel].iqk_done);
+	if (0 && !rtlphy->iqk_matrix_regsetting[indexforchannel].iqk_done &&
 		rtlphy->need_iqk) {
 		/* Re Do IQK. */
 		RT_TRACE(rtlpriv, COMP_SCAN | COMP_INIT, DBG_LOUD,
 			 "Do IQK Matrix reg for channel:%d....\n", channel);
 		rtl92d_phy_iq_calibrate(hw);
-	} else if (!rtlphy->need_iqk) {
+	} else {
 		/* Just load the value. */
 		/* 2G band just load once. */
 		if (((!rtlhal->load_imrandiqk_setting_for2g) &&
-		    index == 0) || index > 0) {
+		    indexforchannel == 0) || indexforchannel > 0) {
 			RT_TRACE(rtlpriv, COMP_SCAN, DBG_LOUD,
 				 "Just Read IQK Matrix reg for channel:%d....\n",
 				 channel);
-			if ((rtlphy->iqk_matrix_regsetting[index].
+			if ((rtlphy->iqk_matrix_regsetting[indexforchannel].
 			     value[0] != NULL)
 				/*&&(regea4 != 0) */)
 				_rtl92d_phy_patha_fill_iqk_matrix(hw, true,
 					rtlphy->iqk_matrix_regsetting[
-					index].value,	0,
+					indexforchannel].value,	0,
 					(rtlphy->iqk_matrix_regsetting[
-					index].value[0][2] == 0));
+					indexforchannel].value[0][2] == 0));
 			if (IS_92D_SINGLEPHY(rtlhal->version)) {
 				if ((rtlphy->iqk_matrix_regsetting[
-					index].value[0][4] != 0)
+					indexforchannel].value[0][4] != 0)
 					/*&&(regec4 != 0) */)
 					_rtl92d_phy_pathb_fill_iqk_matrix(hw,
 						true,
 						rtlphy->iqk_matrix_regsetting[
-						index].value, 0,
+						indexforchannel].value, 0,
 						(rtlphy->iqk_matrix_regsetting[
-						index].value[0][6]
+						indexforchannel].value[0][6]
 						== 0));
 			}
 		}
@@ -2682,6 +2681,7 @@ static void _rtl92d_phy_lc_calibrate_sw(struct ieee80211_hw *hw, bool is2t)
 {
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
 	struct rtl_hal *rtlhal = &(rtlpriv->rtlhal);
+	struct rtl_pci *rtlpci = rtl_pcidev(rtl_pcipriv(hw));
 	u8 tmpreg, index, rf_mode[2];
 	u8 path = is2t ? 2 : 1;
 	u8 i;
@@ -2705,7 +2705,7 @@ static void _rtl92d_phy_lc_calibrate_sw(struct ieee80211_hw *hw, bool is2t)
 		/* 2. Set RF mode = standby mode */
 		rtl_set_rfreg(hw, (enum radio_path)index, RF_AC,
 			      BRFREGOFFSETMASK, 0x010000);
-		if (!rtlpriv->rtlhal.being_init_adapter) {
+		if (rtlpci->init_ready) {
 			/* switch CV-curve control by LC-calibration */
 			rtl_set_rfreg(hw, (enum radio_path)index, RF_SYN_G7,
 				      BIT(17), 0x0);
@@ -2716,7 +2716,7 @@ static void _rtl92d_phy_lc_calibrate_sw(struct ieee80211_hw *hw, bool is2t)
 		u4tmp = rtl_get_rfreg(hw, (enum radio_path)index, RF_SYN_G6,
 				  BRFREGOFFSETMASK);
 		while ((!(u4tmp & BIT(11))) && timecount <= timeout) {
-			rtl_mdelay(50);
+			mdelay(50);
 			timecount += 50;
 			u4tmp = rtl_get_rfreg(hw, (enum radio_path)index,
 					      RF_SYN_G6, BRFREGOFFSETMASK);
@@ -3001,7 +3001,7 @@ u8 rtl92d_phy_sw_chnl(struct ieee80211_hw *hw)
 		return 0;
 	}
 	while (rtlphy->lck_inprogress && timecount < timeout) {
-		rtl_mdelay(50);
+		mdelay(50);
 		timecount += 50;
 	}
 	if (rtlhal->macphymode == SINGLEMAC_SINGLEPHY &&
@@ -3048,7 +3048,7 @@ u8 rtl92d_phy_sw_chnl(struct ieee80211_hw *hw)
 						      rtlphy->current_channel,
 		    &rtlphy->sw_chnl_stage, &rtlphy->sw_chnl_step, &delay)) {
 			if (delay > 0)
-				rtl_mdelay(delay);
+				mdelay(delay);
 			else
 				continue;
 		} else {
@@ -3341,8 +3341,6 @@ void rtl92d_phy_config_macphymode_info(struct ieee80211_hw *hw)
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
 	struct rtl_hal *rtlhal = rtl_hal(rtl_priv(hw));
 	struct rtl_phy *rtlphy = &(rtlpriv->phy);
-	struct rtl_priv *buddy_priv = rtlpriv->buddy_priv;
-	unsigned long flags = 0;
 
 	switch (rtlhal->macphymode) {
 	case DUALMAC_SINGLEPHY:
@@ -3350,23 +3348,6 @@ void rtl92d_phy_config_macphymode_info(struct ieee80211_hw *hw)
 		rtlhal->version |= RF_TYPE_2T2R;
 		rtlhal->bandset = BAND_ON_BOTH;
 		rtlhal->current_bandtype = BAND_ON_2_4G;
-		if (rtlpriv->dm.supp_phymode_switch) {
-			spin_lock_irqsave(&rtlpriv->glb_var->glb_list_lock, flags);
-			if (buddy_priv != NULL) {
-				rtlhal->master_of_dmsp = !buddy_priv->rtlhal.master_of_dmsp;
-				rtlhal->slave_of_dmsp = !buddy_priv->rtlhal.slave_of_dmsp;
-				rtlhal->current_bandtype = buddy_priv->rtlhal.current_bandtype;
-			} else {
-				if (rtlhal->interfaceindex == 0) {
-					rtlhal->master_of_dmsp = true;
-					rtlhal->slave_of_dmsp = false;
-				} else if (rtlhal->interfaceindex == 1) {
-					rtlhal->master_of_dmsp = false;
-					rtlhal->slave_of_dmsp = true;
-				}
-			}
-			spin_unlock_irqrestore(&rtlpriv->glb_var->glb_list_lock, flags);
-		}
 		break;
 
 	case SINGLEMAC_SINGLEPHY:
@@ -3374,10 +3355,6 @@ void rtl92d_phy_config_macphymode_info(struct ieee80211_hw *hw)
 		rtlhal->version |= RF_TYPE_2T2R;
 		rtlhal->bandset = BAND_ON_BOTH;
 		rtlhal->current_bandtype = BAND_ON_2_4G;
-		if (rtlpriv->dm.supp_phymode_switch) {
-			rtlhal->master_of_dmsp = false;
-			rtlhal->slave_of_dmsp = false;
-		}
 		break;
 
 	case DUALMAC_DUALPHY:
@@ -3391,16 +3368,10 @@ void rtl92d_phy_config_macphymode_info(struct ieee80211_hw *hw)
 			rtlhal->bandset = BAND_ON_2_4G;
 			rtlhal->current_bandtype = BAND_ON_2_4G;
 		}
-		if (rtlpriv->dm.supp_phymode_switch) {
-			rtlhal->master_of_dmsp = false;
-			rtlhal->slave_of_dmsp = false;
-		}
 		break;
 	default:
 		break;
 	}
-	rtlpriv->easy_concurrent_ctl.currentbandtype_backfordmdp =
-				 rtlhal->current_bandtype;
 }
 
 u8 rtl92d_get_chnlgroup_fromarray(u8 chnl)
@@ -3741,478 +3712,3 @@ bool rtl92d_phy_check_poweroff(struct ieee80211_hw *hw)
 	spin_unlock_irqrestore(&globalmutex_power, flags);
 	return true;
 }
-
-void _rtl92d_phy_update_bbrf_for_easyconcurrent(struct ieee80211_hw *hw)
-{
-	struct rtl_priv *rtlpriv = rtl_priv(hw);
-	struct rtl_hal *rtlhal = rtl_hal(rtl_priv(hw));
-	u32 bbregvalue = 0;
-	u32 bitmask = 0;
-	u16 reg_value;
-
-	if (rtlhal->interfaceindex == 1) {
-		if (rtlpriv->rtlhal.current_bandtype == BAND_ON_2_4G) {
-			bitmask |= BIT(24) | BIT(25);
-			bbregvalue = 0x00;
-			/* clear 0x800 BIT24 and BIT 25 */
-			rtl_set_bbreg(hw, RFPGA0_RFMOD, bitmask, bbregvalue);
-			_rtl92d_phy_config_bb_with_headerfile(hw, BASEBAND_CONFIG_AGC_TAB);
-			bitmask |= BIT(24) | BIT(25);
-			bbregvalue = 0x3;
-			/* clear 0x800 BIT24 and BIT 25 */
-			rtl_set_bbreg(hw, RFPGA0_RFMOD, bitmask, bbregvalue);
-		} else if (rtlpriv->rtlhal.current_bandtype == BAND_ON_5G) {
-			bitmask |= BIT(24) | BIT(25);
-			bbregvalue = 0x00;
-			rtl_set_bbreg(hw, RFPGA0_RFMOD, bitmask, bbregvalue);
-			_rtl92d_phy_config_bb_with_headerfile(hw, BASEBAND_CONFIG_AGC_TAB);
-
-			bitmask |= BIT(24) | BIT(25);
-			bbregvalue = 0x3;
-			/* clear 0x800 BIT24 and BIT 25 */
-			rtl_set_bbreg(hw, RFPGA0_RFMOD, bitmask, bbregvalue);
-		} else {
-			RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_LOUD,
-				"UnKnown BandType\n");
-		}
-	}
-
-	rtl92d_update_bbrf_configuration(hw);
-
-	if (!rtlpriv->rtlhal.slave_of_dmsp) {
-		reg_value = rtl_read_word(rtlpriv, REG_SYS_FUNC_EN);
-		reg_value &= 0xFFFE;
-		rtl_write_word(rtlpriv, REG_SYS_FUNC_EN, reg_value);
-		reg_value |= 0x0001;
-		rtl_write_word(rtlpriv, REG_SYS_FUNC_EN, reg_value);
-	}
-}
-
-void rtl92d_dualmac_easyconcurrent_bbrfreconfig(struct ieee80211_hw *hw,
-						bool bchange_to_dmsp,
-						bool bchange_to_dmdp)
-{
-	struct rtl_priv *rtlpriv = rtl_priv(hw);
-	struct rtl_hal *rtlhal = rtl_hal(rtl_priv(hw));
-	struct rtl_priv *buddy_priv = rtlpriv->buddy_priv;
-
-	if (bchange_to_dmdp) {
-		RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_EMERG,
-			"change to DMDP\n");
-		rtlhal->macphymode = DUALMAC_DUALPHY;
-		if ((rtlhal->interfaceindex == 0) &&
-			(rtlpriv->easy_concurrent_ctl.close_bbandrf_for_dmsp)) {
-			RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_LOUD,
-				"close BB/RF  MAC 0\n");
-			_rtl92d_phy_stop_trx_before_changeband(hw);
-			rtlpriv->easy_concurrent_ctl.close_bbandrf_for_dmsp = false;
-		} else if ((rtlhal->interfaceindex == 1) &&
-			(buddy_priv->easy_concurrent_ctl.close_bbandrf_for_dmsp)) {
-			RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_LOUD,
-				"close BB/RF MAC 1\n");
-			_rtl92d_phy_stop_trx_before_changeband(buddy_priv->mac80211.hw);
-			buddy_priv->easy_concurrent_ctl.close_bbandrf_for_dmsp = false;
-		}
-
-		rtl_write_byte(rtlpriv, REG_MAC_PHY_CTRL_NORMAL, 0xF3);
-		rtl_write_byte(rtlpriv, REG_DMC, 0x00);
-
-		rtlpriv->phy.num_total_rfpath = 1;
-		rtlpriv->rtlhal.current_bandtype = rtlpriv->easy_concurrent_ctl.currentbandtype_backfordmdp;
-		rtlpriv->rtlhal.bandset = rtlpriv->rtlhal.current_bandtype;
-		rtlpriv->phy.rf_type = RF_1T1R;
-		rtlpriv->rtlhal.version &= RF_TYPE_1T1R;
-		rtlpriv->rtlhal.master_of_dmsp = false;
-		rtlpriv->rtlhal.slave_of_dmsp  = false;
-
-		RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_LOUD,
-			"interface index  %d\n", rtlhal->interfaceindex);
-		RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_LOUD,
-			"rtlpriv->rtlhal.current_bandtype  %d\n",
-			rtlpriv->rtlhal.current_bandtype);
-		RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_LOUD,
-			"rtlpriv->rtlhal.bandset %d\n", rtlpriv->rtlhal.bandset);
-
-		_rtl92d_phy_update_bbrf_for_easyconcurrent(hw);
-
-		if (rtlpriv->rtlhal.current_bandtype == BAND_ON_2_4G)
-			rtl_set_bbreg(hw, RFPGA0_RFMOD, BCCKEN, 0x1);
-		rtl_set_bbreg(hw, RFPGA0_RFMOD, BOFDMEN, 0x1);
-		/* STA and STA */
-		if (rtlpriv->mac80211.link_state != MAC80211_LINKED) {
-			if (rtlpriv->rtlhal.current_bandtype == BAND_ON_2_4G) {
-				rtlpriv->mac80211.mode = WIRELESS_MODE_N_24G;
-				rtlpriv->phy.current_channel = 1;
-				rtlpriv->phy.current_chan_bw = 0;
-			} else {
-				rtlpriv->mac80211.mode = WIRELESS_MODE_N_5G;
-				rtlpriv->phy.current_channel = 36;
-				rtlpriv->phy.current_chan_bw = 0;
-			}
-		}
-	} else if (bchange_to_dmsp) {
-		RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_EMERG,
-			"change to DMSP\n");
-		if (rtlhal->interfaceindex == 0) {
-			RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_EMERG,
-				"MAC 0 Master\n");
-			_rtl92d_phy_stop_trx_before_changeband(rtlpriv->mac80211.hw);
-			_rtl92d_phy_stop_trx_before_changeband(buddy_priv->mac80211.hw);
-			rtlpriv->rtlhal.macphymode = DUALMAC_SINGLEPHY;
-
-			rtl_write_byte(rtlpriv, REG_MAC_PHY_CTRL_NORMAL, 0xF1);
-
-			rtl_write_byte(rtlpriv, REG_DMC, 0xf8);
-			rtl_write_byte(buddy_priv, REG_DMC, 0xf8);
-			rtlpriv->phy.num_total_rfpath = 2;
-			if ((buddy_priv->mac80211.opmode != NL80211_IFTYPE_AP) &&
-				(rtlpriv->mac80211.opmode != NL80211_IFTYPE_AP)) {
-				if (rtlpriv->mac80211.link_state >= MAC80211_LINKED) {
-					rtlpriv->rtlhal.current_bandtype =
-						rtlpriv->easy_concurrent_ctl.
-							currentbandtype_backfordmdp;
-				} else if (buddy_priv->mac80211.link_state >= MAC80211_LINKED) {
-					rtlpriv->rtlhal.current_bandtype =
-						buddy_priv->easy_concurrent_ctl.
-							currentbandtype_backfordmdp;
-				} else {
-					rtlpriv->rtlhal.current_bandtype =
-						rtlpriv->easy_concurrent_ctl.
-							currentbandtype_backfordmdp;
-				}
-			} else if ((buddy_priv->mac80211.opmode == NL80211_IFTYPE_AP) &&
-				(rtlpriv->mac80211.opmode != NL80211_IFTYPE_AP)) {
-				if (rtlpriv->mac80211.link_state != MAC80211_LINKED)
-					rtlpriv->rtlhal.current_bandtype =
-						buddy_priv->easy_concurrent_ctl.
-							currentbandtype_backfordmdp;
-			} else if ((buddy_priv->mac80211.opmode != NL80211_IFTYPE_AP) &&
-				(rtlpriv->mac80211.opmode == NL80211_IFTYPE_AP)) {
-				if (buddy_priv->mac80211.link_state != MAC80211_LINKED)
-					rtlpriv->rtlhal.current_bandtype =
-						rtlpriv->easy_concurrent_ctl.
-							currentbandtype_backfordmdp;
-			} else {
-				rtlpriv->rtlhal.current_bandtype =
-						rtlpriv->easy_concurrent_ctl.
-							currentbandtype_backfordmdp;
-			}
-			rtlpriv->rtlhal.bandset = BAND_ON_BOTH;
-			rtlpriv->phy.rf_type  = RF_2T2R;
-			rtlpriv->rtlhal.version |= RF_TYPE_2T2R;
-			rtlpriv->rtlhal.master_of_dmsp = true;
-			rtlpriv->rtlhal.slave_of_dmsp  = false;
-
-			buddy_priv->rtlhal.macphymode = DUALMAC_SINGLEPHY;
-			buddy_priv->phy.num_total_rfpath = 2;
-			buddy_priv->rtlhal.current_bandtype = rtlpriv->rtlhal.current_bandtype;
-			buddy_priv->rtlhal.bandset = BAND_ON_BOTH;
-			buddy_priv->rtlhal.version |= RF_TYPE_2T2R;
-			buddy_priv->phy.rf_type = RF_2T2R;
-			buddy_priv->rtlhal.master_of_dmsp = false;
-			buddy_priv->rtlhal.slave_of_dmsp  = true;
-
-			RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_EMERG,
-				"rtlpriv->rtlhal.current_bandtype  %d\n",
-				rtlpriv->rtlhal.current_bandtype);
-			RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_EMERG,
-				"rtlpriv->rtlhal.bandset %d\n", rtlpriv->rtlhal.bandset);
-
-			_rtl92d_phy_update_bbrf_for_easyconcurrent(hw);
-
-			if (rtlpriv->rtlhal.current_bandtype == BAND_ON_2_4G)
-				rtl_set_bbreg(hw, RFPGA0_RFMOD, BCCKEN, 0x1);
-			rtl_set_bbreg(hw, RFPGA0_RFMOD, BOFDMEN, 0x1);
-		}
-	} else {
-		RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_LOUD,
-			"Do Nothing\n");
-	}
-}
-
-void _rtl92d_dualmac_reconfig_mgntinfo_forselfmac(struct ieee80211_hw *hw)
-{
-	struct rtl_priv *rtlpriv = rtl_priv(hw);
-	struct rtl_phy *rtlphy = &(rtlpriv->phy);
-	struct rtl_mac *mac = &(rtlpriv->mac80211);
-	struct ieee80211_sta *sta = NULL;
-	u8 index;
-
-	for (index = 0; index < 46; index++)
-			rtlphy->iqk_matrix_regsetting[index].iqk_done = false;
-
-	if (rtlpriv->mac80211.opmode != NL80211_IFTYPE_AP) {
-		if (rtlpriv->mac80211.link_state >= MAC80211_LINKED) {
-			RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_EMERG,
-				"STA  Connect Case\n");
-			/* set BandWidth */
-			rtl92d_phy_reset_iqk_result(hw);
-			rtlphy->need_iqk = true;
-			rtlpriv->cfg->ops->switch_channel(hw);
-			rtl92d_linked_set_reg(hw);
-			rtlpriv->cfg->ops->set_channel_access(hw);
-			rtlpriv->cfg->ops->set_bw_mode(hw, hw->conf.channel_type);
-			rcu_read_lock();
-			sta = rtl_find_sta(hw, mac->bssid);
-			rtlpriv->cfg->ops->update_rate_tbl(hw, sta, 0);
-			rcu_read_unlock();
-			rtlpriv->cfg->ops->set_hw_reg(hw, HW_VAR_SHORTGI_DENSITY,
-					(u8 *) (&rtlpriv->mac80211.max_mss_density));
-			rtlpriv->cfg->ops->set_hw_reg(hw, HW_VAR_AMPDU_FACTOR,
-					&rtlpriv->mac80211.current_ampdu_factor);
-			rtlpriv->cfg->ops->set_hw_reg(hw, HW_VAR_AMPDU_MIN_SPACE,
-					&rtlpriv->mac80211.current_ampdu_density);
-			rtlpriv->cfg->ops->set_network_type(hw, rtlpriv->mac80211.vif->type);
-			rtlpriv->cfg->ops->set_hw_reg(hw, HW_VAR_SLOT_TIME,
-					      (u8 *) (&rtlpriv->mac80211.slot_time));
-		} else {
-			RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_EMERG,
-				"STA change to DMDP DisConnect Case\n");
-			rtlphy->need_iqk = true;
-			rtlpriv->cfg->ops->switch_channel(hw);
-			rtlpriv->cfg->ops->set_channel_access(hw);
-			rtlpriv->cfg->ops->set_bw_mode(hw,
-				hw->conf.channel_type);
-		}
-	} else {
-		RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_LOUD,
-			"AP Case\n");
-	}
-
-}
-
-void _rtl92d_dualmac_reconfig_mgntinfo_foranothermac(struct ieee80211_hw *hw)
-{
-	struct rtl_priv *rtlpriv = rtl_priv(hw);
-	struct rtl_phy *rtlphy = &(rtlpriv->phy);
-	struct rtl_priv *buddy_priv = rtlpriv->buddy_priv;
-	struct ieee80211_hw *buddy_hw = buddy_priv->mac80211.hw;
-	struct rtl_mac *buddy_mac = &(buddy_priv->mac80211);
-	struct ieee80211_sta *sta = NULL;
-	u8 index;
-
-	for (index = 0; index < 46; index++)
-		rtlphy->iqk_matrix_regsetting[index].iqk_done = false;
-
-	if (buddy_priv->mac80211.opmode != NL80211_IFTYPE_AP) {
-		RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_EMERG,
-			"buddy adapter sta case\n");
-		rtl92d_phy_reset_iqk_result(hw);
-		rtlphy->need_iqk = true;
-		rtlpriv->rtlhal.load_imrandiqk_setting_for2g = false;
-		rtlphy->current_channel = buddy_priv->phy.current_channel;
-		rtlphy->current_chan_bw = buddy_priv->phy.current_chan_bw;
-		rtlpriv->mac80211.cur_40_prime_sc =
-			 buddy_priv->mac80211.cur_40_prime_sc;
-		rtlpriv->cfg->ops->switch_channel(hw);
-		rtl92d_linked_set_reg(hw);
-		rtlpriv->cfg->ops->set_channel_access(hw);
-		rtlpriv->cfg->ops->set_bw_mode(hw,
-				buddy_hw->conf.channel_type);
-		rcu_read_lock();
-		sta = rtl_find_sta(buddy_mac->hw, buddy_mac->bssid);
-		buddy_priv->cfg->ops->update_rate_tbl(buddy_hw, sta, 0);
-		rcu_read_unlock();
-		buddy_priv->cfg->ops->set_hw_reg(buddy_hw, HW_VAR_SHORTGI_DENSITY,
-				(u8 *) (&buddy_priv->mac80211.max_mss_density));
-		buddy_priv->cfg->ops->set_hw_reg(buddy_hw, HW_VAR_AMPDU_FACTOR,
-				&buddy_priv->mac80211.current_ampdu_factor);
-		buddy_priv->cfg->ops->set_hw_reg(buddy_hw, HW_VAR_AMPDU_MIN_SPACE,
-				&buddy_priv->mac80211.current_ampdu_density);
-		buddy_priv->cfg->ops->set_network_type(buddy_hw,
-				buddy_priv->mac80211.vif->type);
-		pr_info("***** %s():slot_time is %d\n", __func__,
-			buddy_priv->mac80211.slot_time);
-		buddy_priv->cfg->ops->set_hw_reg(buddy_hw, HW_VAR_SLOT_TIME,
-				(u8 *) (&buddy_priv->mac80211.slot_time));
-	} else {
-		RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_LOUD,
-			"buddy adapter AP case\n");
-	}
-}
-
-void rtl_dualmac_easyconcurrent(struct ieee80211_hw *hw)
-{
-	struct rtl_priv *rtlpriv = rtl_priv(hw);
-	struct rtl_hal *rtlhal = rtl_hal(rtl_priv(hw));
-	struct rtl_priv *buddy_priv = rtlpriv->buddy_priv;
-
-	if (!rtlpriv->dm.supp_phymode_switch)
-		return;
-
-	if (buddy_priv == NULL)
-		return;
-
-	if (rtlpriv->rtlhal.interfaceindex == 0) {
-		RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_EMERG,
-			"MAC 0\n");
-	} else {
-		RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_EMERG,
-			"MAC 1\n");
-	}
-
-	if (rtlpriv->easy_concurrent_ctl.switch_in_process) {
-		mod_timer(&rtlpriv->works.dualmac_easyconcurrent_retrytimer,
-			jiffies + MSECS(100));
-		RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_EMERG,
-			"Another Workitem has been done\n");
-		return;
-	}
-
-	if (rtlpriv->easy_concurrent_ctl.change_to_dmsp &&
-		(rtlpriv->mac80211.act_scanning ||
-		buddy_priv->mac80211.act_scanning)) {
-		mod_timer(&rtlpriv->works.dualmac_easyconcurrent_retrytimer,
-			jiffies + MSECS(100));
-		RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_EMERG,
-			"Scan in progress, do it later\n");
-		return;
-	}
-
-	RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_EMERG,
-		"STA change MacPhyMode\n");
-	if (rtlpriv->easy_concurrent_ctl.change_to_dmdp) {
-		RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_EMERG,
-			"STA change to DMDP\n");
-		rtlpriv->easy_concurrent_ctl.switch_in_process = true;
-		rtl92d_dualmac_easyconcurrent_bbrfreconfig(hw, false, true);
-		rtlpriv->easy_concurrent_ctl.change_to_dmdp = false;
-		_rtl92d_dualmac_reconfig_mgntinfo_forselfmac(hw);
-		rtlpriv->easy_concurrent_ctl.switch_in_process = false;
-	} else if (rtlpriv->easy_concurrent_ctl.change_to_dmsp) {
-		RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_EMERG,
-			"STA change to DMSP\n");
-		rtlpriv->easy_concurrent_ctl.switch_in_process = true;
-		rtl92d_dualmac_easyconcurrent_bbrfreconfig(hw, true, false);
-		rtlpriv->easy_concurrent_ctl.change_to_dmsp = false;
-
-		if (rtlhal->master_of_dmsp) {
-			if ((rtlpriv->mac80211.opmode != NL80211_IFTYPE_AP) &&
-			    (buddy_priv->mac80211.opmode != NL80211_IFTYPE_AP)) {
-				/* MAC0 and MAC1 all STA */
-				if ((rtlpriv->mac80211.link_state >= MAC80211_LINKED) &&
-				   (buddy_priv->mac80211.link_state != MAC80211_LINKED)) {
-					_rtl92d_dualmac_reconfig_mgntinfo_forselfmac(hw);
-				} else if ((rtlpriv->mac80211.link_state != MAC80211_LINKED) &&
-					  (buddy_priv->mac80211.link_state >= MAC80211_LINKED)) {
-					_rtl92d_dualmac_reconfig_mgntinfo_foranothermac(hw);
-				} else {
-					RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_EMERG,
-						"dmsp MAC 0 and MAC 1 disconnect or connect\n");
-				}
-			} else if ((rtlpriv->mac80211.opmode != NL80211_IFTYPE_AP) &&
-				   (buddy_priv->mac80211.opmode == NL80211_IFTYPE_AP)) {
-				/* MAC0  STA and MAC1 AP */
-				_rtl92d_dualmac_reconfig_mgntinfo_foranothermac(hw);
-			} else if ((rtlpriv->mac80211.opmode == NL80211_IFTYPE_AP) &&
-				   (buddy_priv->mac80211.opmode != NL80211_IFTYPE_AP)) {
-				/* MAC0  AP and MAC1 STA */
-				if (buddy_priv->mac80211.link_state != MAC80211_LINKED)
-					_rtl92d_dualmac_reconfig_mgntinfo_foranothermac(hw);
-			}
-		}
-		rtlpriv->easy_concurrent_ctl.switch_in_process = false;
-	} else {
-		RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_EMERG,
-			"STA No Change MacPhyMode\n");
-		if (rtlhal->macphymode == DUALMAC_DUALPHY) {
-			_rtl92d_dualmac_reconfig_mgntinfo_forselfmac(hw);
-		} else if (rtlhal->macphymode == DUALMAC_SINGLEPHY) {
-			if (rtlhal->master_of_dmsp) {
-				if ((rtlpriv->mac80211.link_state >= MAC80211_LINKED) &&
-				   (buddy_priv->mac80211.link_state != MAC80211_LINKED)) {
-					_rtl92d_dualmac_reconfig_mgntinfo_forselfmac(hw);
-				} else if ((rtlpriv->mac80211.link_state != MAC80211_LINKED) &&
-					  (buddy_priv->mac80211.link_state >= MAC80211_LINKED)) {
-					_rtl92d_dualmac_reconfig_mgntinfo_foranothermac(hw);
-				} else {
-					RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_EMERG,
-					"dmsp MAC 0 and MAC 1 disconnect or connect\n");
-				}
-			}
-		}
-	}
-}
-
-void rtl92d_easy_concurrent_switch_to_dmdp(struct ieee80211_hw *hw)
-{
-	struct rtl_priv *rtlpriv = rtl_priv(hw);
-	struct rtl_hal *rtlhal = rtl_hal(rtl_priv(hw));
-	struct ieee80211_sta *sta = NULL;
-	struct rtl_sta_info *sta_entry = NULL;
-	struct rtl_priv *buddy_priv = rtlpriv->buddy_priv;
-	struct ieee80211_hw *buddy_hw = NULL;
-	u8 new_mimops_mode = IEEE80211_SMPS_STATIC;
-	unsigned long flags = 0;
-
-	if (!rtlpriv->dm.supp_phymode_switch)
-		return;
-
-	if (buddy_priv == NULL) {
-		RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_EMERG,
-			"Buddy is Null Error Case\n");
-	} else {
-		spin_lock_irqsave(&rtlpriv->locks.check_sendpkt_lock, flags);
-		buddy_hw = buddy_priv->mac80211.hw;
-		if ((buddy_priv->mac80211.opmode != NL80211_IFTYPE_AP &&
-			buddy_priv->mac80211.link_state >= MAC80211_LINKED) ||
-			(rtlpriv->mac80211.opmode != NL80211_IFTYPE_AP &&
-			rtlpriv->mac80211.link_state >= MAC80211_LINKED)) {
-			RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_EMERG,
-				"one iface is connected, rtlhal->macphymode is %d\n",
-				rtlhal->macphymode);
-			if (rtlhal->macphymode == DUALMAC_SINGLEPHY) {
-				rcu_read_lock();
-				if (buddy_priv->mac80211.link_state >= MAC80211_LINKED)
-					sta = rtl_find_sta(buddy_hw, buddy_priv->mac80211.bssid);
-				else if (rtlpriv->mac80211.link_state >= MAC80211_LINKED)
-					sta = rtl_find_sta(hw, rtlpriv->mac80211.bssid);
-				if (sta) {
-					sta_entry = (struct rtl_sta_info *) sta->drv_priv;
-					sta_entry->mimo_ps = IEEE80211_SMPS_STATIC;
-				}
-				new_mimops_mode = IEEE80211_SMPS_STATIC;
-				if (sta->ht_cap.ht_supported) {
-					if (buddy_priv->mac80211.link_state >= MAC80211_LINKED) {
-						RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_EMERG,
-							 "send SMPS_STATIC pkt\n");
-						rtl_send_smps_action(buddy_hw,
-								sta, new_mimops_mode);
-					} else if (rtlpriv->mac80211.link_state >= MAC80211_LINKED) {
-						RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_EMERG,
-							 "send SMPS_STATIC pkt\n");
-						rtl_send_smps_action(hw,
-								sta, new_mimops_mode);
-					}
-				}
-				rcu_read_unlock();
-
-				rtlpriv->easy_concurrent_ctl.change_to_dmdp = true;
-				buddy_priv->easy_concurrent_ctl.change_to_dmdp = true;
-
-				if (rtlpriv->rtlhal.interfaceindex == 0)
-					rtlpriv->easy_concurrent_ctl.close_bbandrf_for_dmsp
-						= true;
-				else
-					buddy_priv->easy_concurrent_ctl.close_bbandrf_for_dmsp
-						= true;
-
-				if (buddy_priv->mac80211.link_state >=
-				    MAC80211_LINKED) {
-					rtl_dualmac_easyconcurrent(buddy_priv->mac80211.hw);
-					rtl_dualmac_easyconcurrent(hw);
-				} else if (rtlpriv->mac80211.link_state >=
-					   MAC80211_LINKED) {
-					rtl_dualmac_easyconcurrent(hw);
-					rtl_dualmac_easyconcurrent(buddy_priv->mac80211.hw);
-				}
-			}
-		} else {
-			RT_TRACE(rtlpriv, COMP_EASY_CONCURRENT, DBG_LOUD,
-				 "Buddy is AP case or buddy is not linked\n");
-		}
-		spin_unlock_irqrestore(&rtlpriv->locks.check_sendpkt_lock,
-				       flags);
-	}
-}
-

@@ -203,8 +203,9 @@ void rtl92de_set_hw_reg(struct ieee80211_hw *hw, u8 variable, u8 *val)
 			rate_cfg = (rate_cfg >> 1);
 			rate_index++;
 		}
-		rtl_write_byte(rtlpriv, REG_INIRTS_RATE_SEL,
-			       rate_index);
+		if (rtlhal->fw_version > 0xe)
+			rtl_write_byte(rtlpriv, REG_INIRTS_RATE_SEL,
+				       rate_index);
 		break;
 	}
 	case HW_VAR_BSSID:
@@ -672,12 +673,12 @@ static bool _rtl92de_init_mac(struct ieee80211_hw *hw)
 
 	/* 5.   Wait while 0x04[8] == 0 goto 2, otherwise goto 1 */
 	bytetmp = rtl_read_byte(rtlpriv, REG_APS_FSMCO + 1);
-	udelay(2);
+	udelay(50);
 	retry = 0;
 	while ((bytetmp & BIT(0)) && retry < 1000) {
 		retry++;
-		udelay(50);
 		bytetmp = rtl_read_byte(rtlpriv, REG_APS_FSMCO + 1);
+		udelay(50);
 	}
 
 	/* Enable Radio off, GPIO, and LED function */
@@ -906,7 +907,6 @@ int rtl92de_hw_init(struct ieee80211_hw *hw)
 	struct rtl_phy *rtlphy = &(rtlpriv->phy);
 	struct rtl_pci *rtlpci = rtl_pcidev(rtl_pcipriv(hw));
 	struct rtl_ps_ctl *ppsc = rtl_psc(rtl_priv(hw));
-	struct rtl_priv *buddy_priv = rtlpriv->buddy_priv;
 	bool rtstatus = true;
 	u8 tmp_u1b;
 	int i;
@@ -914,6 +914,7 @@ int rtl92de_hw_init(struct ieee80211_hw *hw)
 	unsigned long flags;
 
 	rtlpci->being_init_adapter = true;
+	rtlpci->init_ready = false;
 	spin_lock_irqsave(&globalmutex_for_power_and_efuse, flags);
 	/* we should do iqk after disable/enable */
 	rtl92d_phy_reset_iqk_result(hw);
@@ -930,10 +931,7 @@ int rtl92de_hw_init(struct ieee80211_hw *hw)
 	if (err) {
 		RT_TRACE(rtlpriv, COMP_ERR, DBG_WARNING,
 			 "Failed to download FW. Init HW without FW..\n");
-		err = 1;
-		rtlhal->fw_ready = false;
-	} else {
-		rtlhal->fw_ready = true;
+		return 1;
 	}
 	rtlhal->last_hmeboxnum = 0;
 	rtlpriv->psc.fw_current_inpsmode = false;
@@ -971,60 +969,39 @@ int rtl92de_hw_init(struct ieee80211_hw *hw)
 	rtlpci->receive_config = rtl_read_dword(rtlpriv, REG_RCR);
 	rtlpci->receive_config &= ~(RCR_ACRC32 | RCR_AICV);
 
+	rtl92d_phy_bb_config(hw);
+
+	rtlphy->rf_mode = RF_OP_BY_SW_3WIRE;
+	/* set before initialize RF */
+	rtl_set_bbreg(hw, RFPGA0_ANALOGPARAMETER4, 0x00f00000, 0xf);
+
+	/* config RF */
+	rtl92d_phy_rf_config(hw);
+
 	/* After read predefined TXT, we must set BB/MAC/RF
-	 * register as our requirement
-	 * After load BB,RF params,we need do more for 92D. */
-	if (rtlpriv->dm.supp_phymode_switch) {
-		if (!rtlhal->slave_of_dmsp)
-			rtl92d_update_bbrf_configuration(hw);
-	} else {
-		rtl92d_update_bbrf_configuration(hw);
-	}
+	 * register as our requirement */
+	/* After load BB,RF params,we need do more for 92D. */
+	rtl92d_update_bbrf_configuration(hw);
 	/* set default value after initialize RF,  */
 	rtl_set_bbreg(hw, RFPGA0_ANALOGPARAMETER4, 0x00f00000, 0);
-	if (rtlpriv->dm.supp_phymode_switch) {
-		if (buddy_priv != NULL) {
-			if (rtlhal->slave_of_dmsp) {
-				rtlphy->rfreg_chnlval[0]  = buddy_priv->phy.rfreg_chnlval[0] ;
-				rtlphy->rfreg_chnlval[1]  = buddy_priv->phy.rfreg_chnlval[1] ;
-			} else {
-				rtlphy->rfreg_chnlval[0] = rtl_get_rfreg(hw, (enum radio_path)0,
-					RF_CHNLBW, BRFREGOFFSETMASK);
-				rtlphy->rfreg_chnlval[1] = rtl_get_rfreg(hw, (enum radio_path)1,
-					RF_CHNLBW, BRFREGOFFSETMASK);
-			}
-		} else {
-			rtlphy->rfreg_chnlval[0] = rtl_get_rfreg(hw, (enum radio_path)0,
-				RF_CHNLBW, BRFREGOFFSETMASK);
-			rtlphy->rfreg_chnlval[1] = rtl_get_rfreg(hw, (enum radio_path)1,
-				RF_CHNLBW, BRFREGOFFSETMASK);
-		}
-	} else {
-		rtlphy->rfreg_chnlval[0] = rtl_get_rfreg(hw, (enum radio_path)0,
+	rtlphy->rfreg_chnlval[0] = rtl_get_rfreg(hw, (enum radio_path)0,
 			RF_CHNLBW, BRFREGOFFSETMASK);
-		rtlphy->rfreg_chnlval[1] = rtl_get_rfreg(hw, (enum radio_path)1,
+	rtlphy->rfreg_chnlval[1] = rtl_get_rfreg(hw, (enum radio_path)1,
 			RF_CHNLBW, BRFREGOFFSETMASK);
-	}
+
 	/*---- Set CCK and OFDM Block "ON"----*/
 	if (rtlhal->current_bandtype == BAND_ON_2_4G)
 		rtl_set_bbreg(hw, RFPGA0_RFMOD, BCCKEN, 0x1);
 	rtl_set_bbreg(hw, RFPGA0_RFMOD, BOFDMEN, 0x1);
-	if (!rtlpriv->dm.supp_phymode_switch ||
-	    (rtlpriv->dm.supp_phymode_switch && (!rtlhal->slave_of_dmsp))) {
-		if (rtlhal->current_bandtype == BAND_ON_2_4G)
-			rtl_set_bbreg(hw, RFPGA0_RFMOD, BCCKEN, 0x1);
-		rtl_set_bbreg(hw, RFPGA0_RFMOD, BOFDMEN, 0x1);
-	}
 	if (rtlhal->interfaceindex == 0) {
-		/*RFPGA0_ANALOGPARAMETER2: cck clock select,  set to 20MHz by default */
-		if (!rtlpriv->dm.supp_phymode_switch ||
-			(rtlpriv->dm.supp_phymode_switch && (!rtlhal->slave_of_dmsp)))
-			rtl_set_bbreg(hw, RFPGA0_ANALOGPARAMETER2, BIT(10) | BIT(11), 3);
+		/* RFPGA0_ANALOGPARAMETER2: cck clock select,
+		 *  set to 20MHz by default */
+		rtl_set_bbreg(hw, RFPGA0_ANALOGPARAMETER2, BIT(10) |
+			      BIT(11), 3);
 	} else {
 		/* Mac1 */
-		if (!rtlpriv->dm.supp_phymode_switch ||
-		    (rtlpriv->dm.supp_phymode_switch && (!rtlhal->slave_of_dmsp)))
-			rtl_set_bbreg(hw, RFPGA0_ANALOGPARAMETER2, BIT(11) | BIT(10), 3);
+		rtl_set_bbreg(hw, RFPGA0_ANALOGPARAMETER2, BIT(11) |
+			      BIT(10), 3);
 	}
 
 	_rtl92de_hw_configure(hw);
@@ -1035,11 +1012,9 @@ int rtl92de_hw_init(struct ieee80211_hw *hw)
 
 	/* Read EEPROM TX power index and PHY_REG_PG.txt to capture correct */
 	/* TX power index for different rate set. */
-	if (!rtlpriv->dm.supp_phymode_switch ||
-	    (rtlpriv->dm.supp_phymode_switch && (!rtlhal->slave_of_dmsp))) {
-		rtl92d_phy_get_hw_reg_originalvalue(hw);
-		rtl92d_phy_set_txpower_level(hw, rtlphy->current_channel);
-	}
+	rtl92d_phy_get_hw_reg_originalvalue(hw);
+	rtl92d_phy_set_txpower_level(hw, rtlphy->current_channel);
+
 	ppsc->rfpwr_state = ERFON;
 
 	rtlpriv->cfg->ops->set_hw_reg(hw, HW_VAR_ETHER_ADDR, mac->mac_addr);
@@ -1048,26 +1023,6 @@ int rtl92de_hw_init(struct ieee80211_hw *hw)
 	/* rtlpriv->intf_ops->enable_aspm(hw); */
 
 	rtl92d_dm_init(hw);
-
-	if (!rtlpriv->dm.supp_phymode_switch ||
-	    (rtlpriv->dm.supp_phymode_switch && (!rtlhal->slave_of_dmsp))) {
-		if (ppsc->rfpwr_state == ERFON) {
-			rtl92d_phy_lc_calibrate(hw);
-			/* 5G and 2.4G must wait sometime to let RF LO ready */
-			if (rtlhal->macphymode == DUALMAC_DUALPHY) {
-				u32 tmp_rega;
-				for (i = 0; i < 10000; i++) {
-					udelay(MAX_STALL_TIME);
-
-					tmp_rega = rtl_get_rfreg(hw, (enum radio_path)RF90_PATH_A,
-							0x2a, BMASKDWORD);
-
-					if (((tmp_rega & BIT(11)) == BIT(11)))
-						break;
-				}
-			}
-		}
-	}
 	rtlpci->being_init_adapter = false;
 
 	if (ppsc->rfpwr_state == ERFON) {
@@ -1092,10 +1047,7 @@ int rtl92de_hw_init(struct ieee80211_hw *hw)
 			}
 		}
 	}
-	rtlpriv->rtlhal.being_init_adapter = false;
-	rtlpriv->rtlhal.bbrf_ready = true;
 	rtlpci->init_ready = true;
-
 	return err;
 }
 
@@ -1106,13 +1058,11 @@ static enum version_8192d _rtl92de_read_chip_version(struct ieee80211_hw *hw)
 	u32 value32;
 
 	value32 = rtl_read_dword(rtlpriv, REG_SYS_CFG);
-	version |= CHIP_92D;
 	if (!(value32 & 0x000f0000)) {
 		version = VERSION_TEST_CHIP_92D_SINGLEPHY;
 		RT_TRACE(rtlpriv, COMP_INIT, DBG_LOUD, "TEST CHIP!!!\n");
 	} else {
-		/*version = VERSION_NORMAL_CHIP_92D_SINGLEPHY;*/
-		version |= NORMAL_CHIP;
+		version = VERSION_NORMAL_CHIP_92D_SINGLEPHY;
 		RT_TRACE(rtlpriv, COMP_INIT, DBG_LOUD, "Normal CHIP!!!\n");
 	}
 	return version;
@@ -1764,58 +1714,11 @@ static void _rtl92de_read_macphymode_from_prom(struct ieee80211_hw *hw,
 	}
 }
 
-void _rtl92de_read_macphymode(struct ieee80211_hw *hw)
-{
-	struct rtl_priv *rtlpriv = rtl_priv(hw);
-	struct rtl_hal *rtlhal = rtl_hal(rtl_priv(hw));
-	u8 macphy_crvalue = 0;
-
-	macphy_crvalue = rtl_read_byte(rtlpriv, REG_MAC_PHY_CTRL_NORMAL);
-
-	RT_TRACE(rtlpriv, COMP_INIT, DBG_EMERG,
-		 "MAC_PHY_CTRL Value %x\n", macphy_crvalue);
-
-	if ((macphy_crvalue & 0x03) == 0x03) {
-		rtlhal->macphymode = DUALMAC_DUALPHY;
-		RT_TRACE(rtlpriv, COMP_INIT, DBG_DMESG,
-			 "MacPhyMode DUALMAC_DUALPHY\n");
-	} else if ((macphy_crvalue & 0x03) == 0x01) {
-		rtlhal->macphymode = DUALMAC_SINGLEPHY;
-		RT_TRACE(rtlpriv, COMP_INIT, DBG_DMESG,
-			 "MacPhyMode DUALMAC_SINGLEPHY\n");
-	} else {
-		rtlhal->macphymode = SINGLEMAC_SINGLEPHY;
-		RT_TRACE(rtlpriv, COMP_INIT, DBG_DMESG,
-			 "MacPhyMode SINGLEMAC_SINGLEPHY\n");
-	}
-}
-
 static void _rtl92de_read_macphymode_and_bandtype(struct ieee80211_hw *hw,
 						  u8 *content)
 {
-	struct rtl_priv *rtlpriv = rtl_priv(hw);
-	unsigned long flags = 0;
-	/* must be true here, used for two macs */
-	static bool glb_firstconfig = true;
-
-	if (rtlpriv->dm.supp_phymode_switch) {
-		spin_lock_irqsave(&rtlpriv->glb_var->glb_list_lock, flags);
-		if (glb_firstconfig) {
-			spin_unlock_irqrestore(&rtlpriv->glb_var->glb_list_lock, flags);
-			_rtl92de_read_macphymode_from_prom(hw, content);
-			rtl92d_phy_config_macphymode(hw);
-
-			spin_lock_irqsave(&rtlpriv->glb_var->glb_list_lock, flags);
-			glb_firstconfig = false;
-			spin_unlock_irqrestore(&rtlpriv->glb_var->glb_list_lock, flags);
-		} else {
-			spin_unlock_irqrestore(&rtlpriv->glb_var->glb_list_lock, flags);
-			_rtl92de_read_macphymode(hw);
-		}
-	} else {
-		_rtl92de_read_macphymode_from_prom(hw, content);
-		rtl92d_phy_config_macphymode(hw);
-	}
+	_rtl92de_read_macphymode_from_prom(hw, content);
+	rtl92d_phy_config_macphymode(hw);
 	rtl92d_phy_config_macphymode_info(hw);
 }
 
@@ -1999,8 +1902,6 @@ static void rtl92de_update_hal_rate_table(struct ieee80211_hw *hw,
 		ratr_value = sta->supp_rates[1] << 4;
 	else
 		ratr_value = sta->supp_rates[0];
-	if (mac->opmode == NL80211_IFTYPE_ADHOC)
-		ratr_value = 0xfff;
 	ratr_value |= (sta->ht_cap.mcs.rx_mask[1] << 20 |
 		       sta->ht_cap.mcs.rx_mask[0] << 12);
 	switch (wirelessmode) {
@@ -2094,8 +1995,6 @@ static void rtl92de_update_hal_rate_mask(struct ieee80211_hw *hw,
 		ratr_bitmap = sta->supp_rates[1] << 4;
 	else
 		ratr_bitmap = sta->supp_rates[0];
-	if (mac->opmode == NL80211_IFTYPE_ADHOC)
-		ratr_bitmap = 0xfff;
 	ratr_bitmap |= (sta->ht_cap.mcs.rx_mask[1] << 20 |
 			sta->ht_cap.mcs.rx_mask[0] << 12);
 	switch (wirelessmode) {
@@ -2126,39 +2025,47 @@ static void rtl92de_update_hal_rate_mask(struct ieee80211_hw *hw,
 			ratr_index = RATR_INX_WIRELESS_NGB;
 		else
 			ratr_index = RATR_INX_WIRELESS_NG;
-		if (rtlphy->rf_type == RF_1T2R ||
-		    rtlphy->rf_type == RF_1T1R ||
-		    (mimo_ps == IEEE80211_SMPS_STATIC)) {
-			if (curtxbw_40mhz) {
-				if (rssi_level == 1)
-					ratr_bitmap &= 0x000f0000;
-				else if (rssi_level == 2)
-					ratr_bitmap &= 0x000ff000;
-				else
-					ratr_bitmap &= 0x000ff015;
-			} else {
-				if (rssi_level == 1)
-					ratr_bitmap &= 0x000f0000;
-				else if (rssi_level == 2)
-					ratr_bitmap &= 0x000ff000;
-				else
-					ratr_bitmap &= 0x000ff005;
-			}
+		if (mimo_ps == IEEE80211_SMPS_STATIC) {
+			if (rssi_level == 1)
+				ratr_bitmap &= 0x00070000;
+			else if (rssi_level == 2)
+				ratr_bitmap &= 0x0007f000;
+			else
+				ratr_bitmap &= 0x0007f005;
 		} else {
-			if (curtxbw_40mhz) {
-				if (rssi_level == 1)
-					ratr_bitmap &= 0x0f0f0000;
-				else if (rssi_level == 2)
-					ratr_bitmap &= 0x0f0ff000;
-				else
-					ratr_bitmap &= 0x0f0ff015;
+			if (rtlphy->rf_type == RF_1T2R ||
+			    rtlphy->rf_type == RF_1T1R) {
+				if (curtxbw_40mhz) {
+					if (rssi_level == 1)
+						ratr_bitmap &= 0x000f0000;
+					else if (rssi_level == 2)
+						ratr_bitmap &= 0x000ff000;
+					else
+						ratr_bitmap &= 0x000ff015;
+				} else {
+					if (rssi_level == 1)
+						ratr_bitmap &= 0x000f0000;
+					else if (rssi_level == 2)
+						ratr_bitmap &= 0x000ff000;
+					else
+						ratr_bitmap &= 0x000ff005;
+				}
 			} else {
-				if (rssi_level == 1)
-					ratr_bitmap &= 0x0f0f0000;
-				else if (rssi_level == 2)
-					ratr_bitmap &= 0x0f0ff000;
-				else
-					ratr_bitmap &= 0x0f0ff005;
+				if (curtxbw_40mhz) {
+					if (rssi_level == 1)
+						ratr_bitmap &= 0x0f0f0000;
+					else if (rssi_level == 2)
+						ratr_bitmap &= 0x0f0ff000;
+					else
+						ratr_bitmap &= 0x0f0ff015;
+				} else {
+					if (rssi_level == 1)
+						ratr_bitmap &= 0x0f0f0000;
+					else if (rssi_level == 2)
+						ratr_bitmap &= 0x0f0ff000;
+					else
+						ratr_bitmap &= 0x0f0ff005;
+				}
 			}
 		}
 		if ((curtxbw_40mhz && curshortgi_40mhz) ||
@@ -2179,14 +2086,15 @@ static void rtl92de_update_hal_rate_mask(struct ieee80211_hw *hw,
 			ratr_bitmap &= 0x0f0ff0ff;
 		break;
 	}
-	sta_entry->ratr_index = ratr_index;
 
 	value[0] = (ratr_bitmap & 0x0fffffff) | (ratr_index << 28);
 	value[1] = macid | (shortgi ? 0x20 : 0x00) | 0x80;
 	RT_TRACE(rtlpriv, COMP_RATR, DBG_DMESG,
 		 "ratr_bitmap :%x value0:%x value1:%x\n",
-		  ratr_bitmap, value[0], value[1]);
+		 ratr_bitmap, value[0], value[1]);
 	rtl92d_fill_h2c_cmd(hw, H2C_RA_MASK, 5, (u8 *) value);
+	if (macid != 0)
+		sta_entry->ratr_index = ratr_index;
 }
 
 void rtl92de_update_hal_rate_tbl(struct ieee80211_hw *hw,

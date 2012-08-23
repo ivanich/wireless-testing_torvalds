@@ -115,18 +115,8 @@
 #define	GET_C2H_CMD_FEEDBACK_CCX_SEQ(__pcmdfbhdr)	\
 	LE_BITS_TO_4BYTE(((__pcmdfbhdr) + 4), 20, 12)
 
-#define CHIP_BONDING_IDENTIFIER(_value)	(((_value) >> 22) & 0x3)
-#define	CHIP_BONDING_92C_1T2R		0x1
-
-#define CHIP_92C_BITMASK		BIT(0)
-#define RF_TYPE_1T2R			BIT(1)
-#define NORMAL_CHIP			BIT(4)
-#define CHIP_VENDOR_UMC			BIT(5)
-#define CHIP_VENDOR_UMC_B_CUT	BIT(6) /* Chip version for ECO */
-#define CHIP_UNKNOW			BIT(7)
-#define CUT_VERSION_MASK		(BIT(6)|BIT(7))
-#define RF_TYPE_MASK			(BIT(0)|BIT(1))
 #define CHIP_VER_B			BIT(4)
+#define CHIP_92C_BITMASK		BIT(0)
 #define CHIP_92C_1T2R			0x03
 #define CHIP_92C			0x01
 #define CHIP_88C			0x00

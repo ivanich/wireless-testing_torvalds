@@ -125,12 +125,12 @@ u32 _rtl92c_phy_rf_serial_read(struct ieee80211_hw *hw,
 	    (newoffset << 23) | BLSSIREADEDGE;
 	rtl_set_bbreg(hw, RFPGA0_XA_HSSIPARAMETER2, MASKDWORD,
 		      tmplong & (~BLSSIREADEDGE));
-	rtl_mdelay(1);
+	mdelay(1);
 	rtl_set_bbreg(hw, pphyreg->rfhssi_para2, MASKDWORD, tmplong2);
-	rtl_mdelay(1);
+	mdelay(1);
 	rtl_set_bbreg(hw, RFPGA0_XA_HSSIPARAMETER2, MASKDWORD,
 		      tmplong | BLSSIREADEDGE);
-	rtl_mdelay(1);
+	mdelay(1);
 	if (rfpath == RF90_PATH_A)
 		rfpi_enable = (u8) rtl_get_bbreg(hw, RFPGA0_XA_HSSIPARAMETER1,
 						 BIT(8));
@@ -683,7 +683,7 @@ void rtl92c_phy_sw_chnl_callback(struct ieee80211_hw *hw)
 		    (hw, rtlphy->current_channel, &rtlphy->sw_chnl_stage,
 		     &rtlphy->sw_chnl_step, &delay)) {
 			if (delay > 0)
-				rtl_mdelay(delay);
+				mdelay(delay);
 			else
 				continue;
 		} else {
@@ -881,7 +881,7 @@ static u8 _rtl92c_phy_path_a_iqk(struct ieee80211_hw *hw, bool config_pathb)
 	rtl_set_bbreg(hw, 0xe48, MASKDWORD, 0xf9000000);
 	rtl_set_bbreg(hw, 0xe48, MASKDWORD, 0xf8000000);
 
-	rtl_mdelay(IQK_DELAY_TIME);
+	mdelay(IQK_DELAY_TIME);
 
 	reg_eac = rtl_get_bbreg(hw, 0xeac, MASKDWORD);
 	reg_e94 = rtl_get_bbreg(hw, 0xe94, MASKDWORD);
@@ -909,7 +909,7 @@ static u8 _rtl92c_phy_path_b_iqk(struct ieee80211_hw *hw)
 
 	rtl_set_bbreg(hw, 0xe60, MASKDWORD, 0x00000002);
 	rtl_set_bbreg(hw, 0xe60, MASKDWORD, 0x00000000);
-	rtl_mdelay(IQK_DELAY_TIME);
+	mdelay(IQK_DELAY_TIME);
 	reg_eac = rtl_get_bbreg(hw, 0xeac, MASKDWORD);
 	reg_eb4 = rtl_get_bbreg(hw, 0xeb4, MASKDWORD);
 	reg_ebc = rtl_get_bbreg(hw, 0xebc, MASKDWORD);
@@ -1563,7 +1563,7 @@ static void _rtl92c_phy_ap_calibrate(struct ieee80211_hw *hw,
 					 rtl_get_bbreg(hw, apk_offset[path],
 						       MASKDWORD)));
 
-				rtl_mdelay(3);
+				mdelay(3);
 
 				rtl_set_bbreg(hw, apk_offset[path],
 					      MASKDWORD, apk_value[1]);
@@ -1574,7 +1574,7 @@ static void _rtl92c_phy_ap_calibrate(struct ieee80211_hw *hw,
 					 rtl_get_bbreg(hw, apk_offset[path],
 						       MASKDWORD)));
 
-				rtl_mdelay(20);
+				mdelay(20);
 
 				rtl_set_bbreg(hw, 0xe28, MASKDWORD, 0x00000000);
 

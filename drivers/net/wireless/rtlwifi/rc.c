@@ -35,8 +35,7 @@
  *Finds the highest rate index we can use
  *if skb is special data like DHCP/EAPOL, we set should
  *it to lowest rate CCK_1M, otherwise we set rate to
- *highest rate based on wireless mode used for
- *iwconfig show Tx rate.
+ *CCK11M or OFDM_54M based on wireless mode.
  */
 static u8 _rtl_rc_get_highest_rix(struct rtl_priv *rtlpriv,
 				  struct ieee80211_sta *sta,

@@ -151,9 +151,6 @@ enum dm_dig_connect {
 	DIG_CONNECT_MAX
 };
 
-#define MULTISTA_CONNECT(rtlpriv) (list_empty(&rtlpriv->entry_list) ? \
-		DIG_MULTISTA_DISCONNECT : DIG_MULTISTA_CONNECT);
-
 void rtl92d_dm_init(struct ieee80211_hw *hw);
 void rtl92d_dm_watchdog(struct ieee80211_hw *hw);
 void rtl92d_dm_init_edca_turbo(struct ieee80211_hw *hw);
