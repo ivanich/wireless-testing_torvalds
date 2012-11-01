@@ -241,7 +241,7 @@ static int cfg80211_rfkill_set_block(void *data, bool blocked)
 		case NL80211_IFTYPE_P2P_DEVICE:
 			if (!wdev->p2p_started)
 				break;
-			rdev->ops->stop_p2p_device(&rdev->wiphy, wdev);
+			rdev_stop_p2p_device(rdev, wdev);
 			wdev->p2p_started = false;
 			rdev->opencount--;
 			break;
@@ -529,8 +529,7 @@ int wiphy_register(struct wiphy *wiphy)
 		for (i = 0; i < sband->n_channels; i++) {
 			sband->channels[i].orig_flags =
 				sband->channels[i].flags;
-			sband->channels[i].orig_mag =
-				sband->channels[i].max_antenna_gain;
+			sband->channels[i].orig_mag = INT_MAX;
 			sband->channels[i].orig_mpwr =
 				sband->channels[i].max_power;
 			sband->channels[i].band = band;
@@ -774,7 +773,7 @@ void cfg80211_unregister_wdev(struct wireless_dev *wdev)
 	case NL80211_IFTYPE_P2P_DEVICE:
 		if (!wdev->p2p_started)
 			break;
-		rdev->ops->stop_p2p_device(&rdev->wiphy, wdev);
+		rdev_stop_p2p_device(rdev, wdev);
 		wdev->p2p_started = false;
 		rdev->opencount--;
 		break;
